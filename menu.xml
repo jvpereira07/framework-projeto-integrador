@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gui>
+    <!-- Container do menu principal centralizado -->
+    <container x="center" y="center" sizex="400" sizey="500" texture="17">
+        
+        <!-- Botão de fechar no canto superior direito -->
+        <button x="right" y="10" sizex="30" sizey="30" texture="16" texture_pressed="17" action="close_menu" />
+        
+        <!-- Título do menu (usando botão como placeholder) -->
+        <button x="center" y="20" sizex="200" sizey="60" texture="17" texture_pressed="16" action="title_action" />
+        
+        <!-- Botões do menu principal -->
+        <button x="center" y="120" sizex="180" sizey="50" texture="17" texture_pressed="16" action="new_game_action" />
+        <button x="center" y="180" sizex="180" sizey="50" texture="17" texture_pressed="16" action="load_game_action" />
+        <button x="center" y="240" sizex="180" sizey="50" texture="17" texture_pressed="16" action="options_action" />
+        <button x="center" y="300" sizex="180" sizey="50" texture="17" texture_pressed="16" action="credits_action" />
+        <button x="center" y="360" sizex="180" sizey="50" texture="17" texture_pressed="16" action="quit_action" />
+        
+        <!-- Botões de configuração rápida na parte inferior -->
+        <button x="20" y="bottom" sizex="80" sizey="40" texture="17" texture_pressed="16" action="settings_action" />
+        <button x="right" y="bottom" sizex="80" sizey="40" texture="17" texture_pressed="16" action="help_action" />
+        
+    </container>
+    
+    <!-- Indicador de versão no canto inferior direito da tela -->
+    <button x="right" y="bottom" sizex="100" sizey="30" texture="17" texture_pressed="16" action="version_info" />
+    
+</gui>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gui>
+    <!-- Container principal centralizado na tela -->
+    <container x="left" y="bottom" sizex="400" sizey="300" texture="17">
+        
+        <!-- Botões dentro do container usando coordenadas relativas ao container -->
+        
+        <!-- Botão no canto superior esquerdo do container -->
+        <button x="0" y="0" sizex="80" sizey="30" texture="17" texture_pressed="16" action="test_action" />
+        
+        <!-- Botão centralizado horizontalmente no container -->
+        <button x="50%" y="0" sizex="80" sizey="30" texture="17" texture_pressed="16" action="inventory_action" />
+        
+        <!-- Botão no canto superior direito do container -->
+        <button x="right" y="0" sizex="80" sizey="30" texture="17" texture_pressed="16" action="menu_action" />
+        
+        <!-- Botão centralizado no meio do container -->
+        <button x="center" y="center" sizex="100" sizey="40" texture="17" texture_pressed="16" action="pause_action" />
+        
+        <!-- Botões na parte inferior do container -->
+        <button x="25%" y="bottom" sizex="70" sizey="30" texture="17" texture_pressed="16" action="save_action" />
+        <button x="75%" y="bottom" sizex="70" sizey="30" texture="17" texture_pressed="16" action="quit_action" />
+        
+    </container>
+    
+    <!-- Botão fora do container para comparação -->
+    <button x="10" y="10" sizex="100" sizey="30" texture="17" texture_pressed="16" action="test_action" />
+    
+</gui>
+

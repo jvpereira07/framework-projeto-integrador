@@ -1,0 +1,134 @@
+{
+    "id": 1,
+    "position": {
+        "x": 271,
+        "y": 332
+    },
+    "stats": {
+        "hp": 150,
+        "maxHp": 150,
+        "regenHp": 0.5,
+        "mana": 100,
+        "maxMana": 100,
+        "regenMana": 0.3,
+        "stamina": 80,
+        "maxStamina": 80,
+        "regenStamina": 0.4,
+        "damage": 15,
+        "critical": 0.1,
+        "defense": 8,
+        "speed": 1,
+        "ace": 0.1
+    },
+    "inv": {
+        "get": {
+            "bag": {
+                "size": 42
+            }
+        },
+        "quant": 32,
+        "inv": [
+            {
+                "item_type": "Consumable",
+                "name": "Poção de mana",
+                "texture": 10,
+                "description": "Restaura 100 pontos de mana.",
+                "id": 3,
+                "heal": 0.0,
+                "mana": 100.0,
+                "stamina": 0.0,
+                "effect": "",
+                "quant": 46
+            },
+            {
+                "item_type": "KeyItem",
+                "name": "Pintão",
+                "texture": 7,
+                "special": "",
+                "description": "Item de teste",
+                "id": 2,
+                "quant": 1
+            },
+            {
+                "item_type": "Consumable",
+                "name": "Poção de cura",
+                "texture": 9,
+                "description": "Restaura 100 pontos de vida",
+                "id": 1,
+                "heal": 100.0,
+                "mana": 0.0,
+                "stamina": 0.0,
+                "effect": "",
+                "quant": 37
+            },
+            {
+                "item_type": "Weapon",
+                "name": "Machado Flamejante",
+                "texture": null,
+                "classe": "Geral",
+                "damage": 25,
+                "critical": 0.05,
+                "range": 1.8,
+                "speed": 3,
+                "move": 0,
+                "condition": null,
+                "special": 2,
+                "ability": "Nenhuma",
+                "element": null,
+                "slot": "hand1",
+                "description": "",
+                "id": 4,
+                "quant": 1
+            }
+        ]
+    },
+    "equiped": {
+        "head": {
+            "item_type": "Equipment",
+            "name": "Elmo de Aço",
+            "texture": null,
+            "description": "",
+            "id": 2,
+            "defense": 12,
+            "resistance": 8,
+            "regen": 0,
+            "speed": -0.1,
+            "attack": 0,
+            "critical": 0,
+            "stamina": 0,
+            "mana": 0,
+            "mana_regen": 0,
+            "classe": "Guerreiro",
+            "condition": 100,
+            "special": "Proteção contra críticos",
+            "slot": "head"
+        },
+        "body": null,
+        "leg": null,
+        "foot": null,
+        "bag": null,
+        "hands": null,
+        "neck": null,
+        "belt": null,
+        "arm": null,
+        "hand1": {
+            "item_type": "Weapon",
+            "name": "Espada Laminar",
+            "texture": null,
+            "classe": "Geral",
+            "damage": 18,
+            "critical": 0.15,
+            "range": 1.5,
+            "speed": 3.0,
+            "move": 0,
+            "condition": null,
+            "special": 1,
+            "ability": "Nenhuma",
+            "element": null,
+            "slot": "hand1",
+            "description": "",
+            "id": 3
+        },
+        "hand2": null
+    }
+}

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gui>
+    <!-- Container principal do inventário centralizado -->
+    <container x="center" y="center" sizex="680" sizey="680" texture="13" border="false">
+        
+        <!-- Cabeçalho do inventário -->
+    <container x="0" y="0" sizex="680" sizey="70" texture="none" border="false">
+            <button x="right" y="center" sizex="70" sizey="70" texture="18" texture_pressed="18" action="close_inventory" />
+        </container>
+        
+        <!-- Área principal dividida em duas seções -->
+    
+        <!-- Slots de Equipamentos: duas colunas de 4 slots e, entre elas, uma coluna de 2 slots -->
+        <container x="5%" y="30%" sizex="180" sizey="230" texture="none" border="false">
+            <!-- Coluna esquerda: head, body, leg, foot -->
+            <equipslot x="13" y="70"  sizex="50" sizey="50" texture="20" texture_pressed="21" slot="head" />
+            <equipslot x="13" y="134" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="body" />
+            <equipslot x="13" y="198" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="leg" />
+            <equipslot x="13" y="262" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="foot" />
+
+            <!-- Coluna do meio: hand1 e hand2 -->
+            <equipslot x="75" y="198"  sizex="50" sizey="50" texture="20" texture_pressed="21" slot="hand1" />
+            <equipslot x="75" y="262" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="hand2" />
+
+            <!-- Coluna direita: neck, hands, belt, arm -->
+            <equipslot x="137" y="70"  sizex="50" sizey="50" texture="20" texture_pressed="21" slot="neck" />
+            <equipslot x="137" y="134" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="hands" />
+            <equipslot x="137" y="198" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="belt" />
+            <equipslot x="137" y="262" sizex="50" sizey="50" texture="20" texture_pressed="21" slot="arm" />
+        </container>
+        
+    <!-- Painel de informações do item selecionado (InfoBox) -->
+    <infobox x="20%" y="85%" sizex="250" sizey="110" texture="none" />
+
+    <!-- Ações do item selecionado -->
+    <container x="95%" y="84%" sizex = "250" sizey="110" texture="none" border="false">
+    <button x="10" y="10" sizex="230" sizey="30" texture="14" texture_pressed="14" action="item_drop" />
+    <button x="10" y="50" sizex="230" sizey="30" texture="15" texture_pressed="15" action="item_equip" />
+    <button x="10" y="90" sizex="230" sizey="30" texture="16" texture_pressed="16" action="item_unequip" />
+    <button x="100" y="10" sizex="230" sizey="30" texture="17" texture_pressed="17" action="item_use" />
+    </container>
+    
+    <!-- Lado esquerdo - Grid de itens -->
+        <!-- Grid de slots de inventário centralizado -->
+    <container x="85.5%" y="30%" sizex="378" sizey="314" texture="none" border="false">
+            <!-- Grid 7x6 de slots de inventário (50x50 cada com espaçamento de 4px) -->
+            <!-- Linha 1 -->
+            <slot x="10" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_1" />
+            <slot x="64" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_2" />
+            <slot x="118" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_3" />
+            <slot x="172" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_4" />
+            <slot x="226" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_5" />
+            <slot x="280" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_6" />
+            <slot x="334" y="10" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_7" />
+            
+            <!-- Linha 2 -->
+            <slot x="10" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_8" />
+            <slot x="64" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_9" />
+            <slot x="118" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_10" />
+            <slot x="172" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_11" />
+            <slot x="226" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_12" />
+            <slot x="280" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_13" />
+            <slot x="334" y="64" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_14" />
+            
+            <!-- Linha 3 -->
+            <slot x="10" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_15" />
+            <slot x="64" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_16" />
+            <slot x="118" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_17" />
+            <slot x="172" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_18" />
+            <slot x="226" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_19" />
+            <slot x="280" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_20" />
+            <slot x="334" y="118" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_21" />
+            
+            <!-- Linha 4 -->
+            <slot x="10" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_22" />
+            <slot x="64" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_23" />
+            <slot x="118" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_24" />
+            <slot x="172" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_25" />
+            <slot x="226" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_26" />
+            <slot x="280" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_27" />
+            <slot x="334" y="172" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_28" />
+            
+            <!-- Linha 5 -->
+            <slot x="10" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_29" />
+            <slot x="64" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_30" />
+            <slot x="118" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_31" />
+            <slot x="172" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_32" />
+            <slot x="226" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_33" />
+            <slot x="280" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_34" />
+            <slot x="334" y="226" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_35" />
+            
+            <!-- Linha 6 -->
+            <slot x="10" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_36" />
+            <slot x="64" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_37" />
+            <slot x="118" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_38" />
+            <slot x="172" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_39" />
+            <slot x="226" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_40" />
+            <slot x="280" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_41" />
+            <slot x="334" y="280" sizex="50" sizey="50" texture="20" texture_pressed="21" action="slot_42" />
+            
+        </container>
+        
+    </container>
+    
+</gui>
