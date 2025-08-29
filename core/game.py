@@ -151,7 +151,7 @@ class Game:
                 
                 # Renderiza cursor por último
                 self.mouse.update(mx, my, mouse_pressed)
-                PlayerTick.Players[0].stats.hp -=1
+                
                 
 
                 deltatime = self.clock.tick(self.CONFIG['project']['FPS'])

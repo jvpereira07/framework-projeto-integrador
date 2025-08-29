@@ -23,6 +23,14 @@ O `StatsBar` é um componente GUI que exibe barras de status do player, mescland
 - **texture_empty**: ID do sprite da barra vazia (no banco de sprites)
 - **texture_full**: ID do sprite da barra cheia (no banco de sprites)
 - **stat**: Nome do status a monitorar (hp, mana, stamina, etc.)
+- **orientation**: Direção do preenchimento: `horizontal` (padrão) ou `vertical`
+- **direction**: Sentido do preenchimento: `positive` (padrão) ou `negative`
+
+Notas de direção:
+- Horizontal + positive: preenche da esquerda para a direita
+- Horizontal + negative: preenche da direita para a esquerda
+- Vertical + positive: preenche de cima para baixo
+- Vertical + negative: preenche de baixo para cima
 
 ### Atributos alternativos
 
@@ -66,6 +74,11 @@ O StatsBar pode monitorar qualquer atributo do `player.stats`:
                   texture_empty="29" texture_full="30" stat="stamina" />
         <text x="10" y="95" text="Stamina" font_size="14" color="255,255,100,255" />
         
+    <!-- Exemplo vertical preenchendo de baixo para cima -->
+    <statsbar x="220" y="10" sizex="20" sizey="80"
+          texture_empty="25" texture_full="26" stat="mana"
+          orientation="vertical" direction="negative" />
+
     </container>
 </gui>
 ```

@@ -14,6 +14,16 @@
     <statsbar x="50" y="110" sizex="200" sizey="25" 
               texture_empty="0" texture_full="0" stat="stamina" />
     
+    <!-- Barra vertical (preenche de cima para baixo) -->
+    <statsbar x="270" y="50" sizex="20" sizey="90"
+              texture_empty="0" texture_full="0" stat="hp"
+              orientation="vertical" direction="positive" />
+
+    <!-- Barra horizontal reversa (direita -> esquerda) -->
+    <statsbar x="300" y="50" sizex="200" sizey="25"
+              texture_empty="0" texture_full="0" stat="mana"
+              orientation="horizontal" direction="negative" />
+
     <!-- Labels para as barras -->
     <text x="10" y="55" text="HP:" font_size="16" color="255,0,0,255" />
     <text x="10" y="85" text="MP:" font_size="16" color="0,0,255,255" />
