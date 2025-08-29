@@ -111,7 +111,7 @@ class PControl:
             if hasattr(player, 'equip') and player.attacking:
                 # Desenha arma da mão ativa se equipada
                 active_weapon = None
-                print(player.anim)
+                
                 
                 if player.active_hand == 1 and hasattr(player.equip, 'hand1') and player.equip.hand1:
                     active_weapon = player.equip.hand1
@@ -122,7 +122,6 @@ class PControl:
                 
                 if active_weapon and hasattr(active_weapon, '_loaded_action_texture') and active_weapon._loaded_action_texture:
                     weapon_texture = active_weapon._loaded_action_texture
-                    print(f"Renderizando arma: {active_weapon.name} com texture_action: {active_weapon.texture_action}")
                     weapon_texture.draw(screen_x, screen_y, player.anim - 12, zoom)
     
     def get_main_player():

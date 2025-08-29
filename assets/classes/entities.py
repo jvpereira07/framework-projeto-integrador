@@ -441,7 +441,7 @@ class Player(Entity):
             self.moving = False
 
     def atack(self, weapon, mousex, mousey):
-        print("teste")
+        
         dirx = mousex - self.posx
         diry = mousey - self.posy
 
