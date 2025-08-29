@@ -525,3 +525,21 @@ def save_player(player, filename="saves/player.json"):
     player_dict = player.to_dict()
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(player_dict, f, indent=4, ensure_ascii=False)
+class ItemEntity(Entity):
+    def __init__(self, id, x, y, item: Item):
+        super().__init__(id, x, y, 16, 16, item.texture)
+        self.item = item
+        self.type = "item"
+class Breakable(Entity):
+    def __init__(self, id, x, y, sizex, sizey, texture, durability, drop):
+        super().__init__(id, x, y, sizex, sizey, texture)
+        self.durability = durability
+        self.type = "breakable"
+        self.drop = drop
+    def take_damage(self, amount):
+        self.durability -= amount
+        if self.durability <= 0:
+            self.destroy()
+    def destroy(self):
+        EControl.rem(self.id)
+        # Aqui você pode adicionar lógica para soltar itens ou efeitos visuais ao ser destruído
