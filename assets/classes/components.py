@@ -346,6 +346,185 @@ class EquipmentSlot(Button):
         except Exception as e:
             print(f"Erro ao interagir com EquipmentSlot {self.equip_slot_name}: {e}")
         return clicked
+class StatsBar(GUI):
+    """Barra de status que mescla duas texturas conforme o valor de um status do player"""
+    def __init__(self, x, y, sizex, sizey, texture_empty, texture_full, stat_name, parent=None):
+        super().__init__(texture_empty, x, y, sizex, sizey, parent)
+        
+        # Carrega as texturas das barras vazia e cheia
+        self.texture_empty = None
+        self.texture_full = None
+        
+        if texture_empty is not None:
+            try:
+                self.texture_empty = load_sprite_from_db(texture_empty)
+                if self.texture_empty is None:
+                    print(f"Aviso: Sprite da barra vazia {texture_empty} não encontrado")
+            except Exception as e:
+                print(f"Erro ao carregar sprite da barra vazia {texture_empty}: {e}")
+        
+        if texture_full is not None:
+            try:
+                self.texture_full = load_sprite_from_db(texture_full)
+                if self.texture_full is None:
+                    print(f"Aviso: Sprite da barra cheia {texture_full} não encontrado")
+            except Exception as e:
+                print(f"Erro ao carregar sprite da barra cheia {texture_full}: {e}")
+        
+        # Nome do status que será monitorado (ex: "hp", "mana", "stamina")
+        self.stat_name = stat_name
+        
+        # Cache do último valor para otimização
+        self._last_current_value = 0
+        self._last_max_value = 100
+        
+        print(f"StatsBar criada para status '{stat_name}' em ({x}, {y}) com tamanho ({sizex}, {sizey})")
+    
+    def get_stat_values(self):
+        """Obtém os valores atual e máximo do status do player"""
+        try:
+            from core.entity import PControl
+            player = PControl.get_main_player()
+            
+            if not player or not hasattr(player, 'stats'):
+                # Só mostra warning na primeira vez
+                if not hasattr(self, '_warned_no_player'):
+                    print(f"StatsBar {self.stat_name}: Player ou stats não encontrado")
+                    self._warned_no_player = True
+                return 0, 100
+            
+            # Reset warning se player foi encontrado
+            if hasattr(self, '_warned_no_player'):
+                delattr(self, '_warned_no_player')
+            
+            # Valor atual do status
+            current_value = getattr(player.stats, self.stat_name, 0)
+            
+            # Valor máximo (busca o atributo max{StatName})
+            max_stat_name = f"max{self.stat_name.capitalize()}"
+            max_value = getattr(player.stats, max_stat_name, 100)
+            
+            # Garante que os valores são válidos
+            current_value = max(0, float(current_value))
+            max_value = max(1, float(max_value))  # Evita divisão por zero
+            
+            # Se o valor atual for maior que o máximo, limita ao máximo
+            if current_value > max_value:
+                print(f"StatsBar {self.stat_name}: Valor atual ({current_value}) maior que máximo ({max_value}), limitando")
+                current_value = max_value
+            
+            # Debug apenas se valores mudaram significativamente
+            if (not hasattr(self, '_last_debug_current') or 
+                abs(current_value - self._last_debug_current) > 1 or
+                abs(max_value - getattr(self, '_last_debug_max', 0)) > 1):
+                print(f"StatsBar {self.stat_name}: current={current_value}, max={max_value}")
+                self._last_debug_current = current_value
+                self._last_debug_max = max_value
+            
+            return current_value, max_value
+            
+        except Exception as e:
+            print(f"Erro ao obter valores do status {self.stat_name}: {e}")
+            return 0, 100
+    
+    def draw(self):
+        """Desenha a barra mesclando as texturas conforme o valor do status"""
+        if not getattr(self, 'visible', True):
+            return
+        
+        abs_x, abs_y = self.get_absolute_position()
+        
+        try:
+            # Obtém os valores atuais do status
+            current_value, max_value = self.get_stat_values()
+            
+            # Calcula a porcentagem preenchida (0.0 a 1.0)
+            fill_percentage = current_value / max_value if max_value > 0 else 0
+            fill_percentage = max(0.0, min(1.0, fill_percentage))  # Limita entre 0 e 1
+            
+            # Debug: mostra a porcentagem calculada
+            print(f"StatsBar {self.stat_name}: fill_percentage={fill_percentage:.2f} ({current_value}/{max_value})")
+            
+            # Atualiza cache
+            self._last_current_value = current_value
+            self._last_max_value = max_value
+            
+            # Se não há texturas, apenas desenha um retângulo colorido de debug
+            if not self.texture_empty and not self.texture_full:
+                glDisable(GL_TEXTURE_2D)
+                # Cor baseada na porcentagem: vermelho -> amarelo -> verde
+                if fill_percentage < 0.5:
+                    r = 1.0
+                    g = fill_percentage * 2
+                else:
+                    r = 2.0 * (1.0 - fill_percentage)
+                    g = 1.0
+                glColor4f(r, g, 0.0, 0.8)
+                
+                # Desenha retângulo preenchido
+                fill_width = self.sizex * fill_percentage
+                glBegin(GL_QUADS)
+                glVertex2f(abs_x, abs_y)
+                glVertex2f(abs_x + fill_width, abs_y)
+                glVertex2f(abs_x + fill_width, abs_y + self.sizey)
+                glVertex2f(abs_x, abs_y + self.sizey)
+                glEnd()
+                
+                # Desenha borda
+                glColor4f(1.0, 1.0, 1.0, 1.0)
+                glBegin(GL_LINE_LOOP)
+                glVertex2f(abs_x, abs_y)
+                glVertex2f(abs_x + self.sizex, abs_y)
+                glVertex2f(abs_x + self.sizex, abs_y + self.sizey)
+                glVertex2f(abs_x, abs_y + self.sizey)
+                glEnd()
+                
+                glEnable(GL_TEXTURE_2D)
+                glColor4f(1.0, 1.0, 1.0, 1.0)  # Reset cor
+                return
+            
+            # Desenha a barra vazia como fundo
+            if self.texture_empty:
+                self.texture_empty.draw(abs_x, abs_y, 0, 1)
+            
+            # Se a barra está completamente vazia, não desenha a parte cheia
+            if fill_percentage <= 0 or not self.texture_full:
+                return
+            
+            # Desenha a parte cheia da barra usando recorte
+            if self.texture_full:
+                # Salva estado do OpenGL
+                glPushAttrib(GL_SCISSOR_BIT)
+                
+                # Habilita scissor test para recortar a textura
+                glEnable(GL_SCISSOR_TEST)
+                
+                # Calcula área de recorte (em coordenadas de tela)
+                # OpenGL scissor usa coordenadas com origem no canto inferior esquerdo
+                from OpenGL.GL import glGetIntegerv, GL_VIEWPORT
+                viewport = glGetIntegerv(GL_VIEWPORT)
+                screen_height = viewport[3]
+                
+                scissor_x = int(abs_x)
+                scissor_y = int(screen_height - abs_y - self.sizey)  # Inverte Y
+                scissor_width = int(self.sizex * fill_percentage)
+                scissor_height = int(self.sizey)
+                
+                # Define área de recorte
+                glScissor(scissor_x, scissor_y, scissor_width, scissor_height)
+                
+                # Desenha a textura cheia (será recortada pelo scissor)
+                self.texture_full.draw(abs_x, abs_y, 0, 1)
+                
+                # Restaura estado do OpenGL
+                glPopAttrib()
+                
+        except Exception as e:
+            print(f"Erro ao desenhar StatsBar para {self.stat_name}: {e}")
+            # Fallback: desenha apenas a textura vazia se disponível
+            if self.texture_empty:
+                self.texture_empty.draw(abs_x, abs_y, 0, 1)
+
 # Registro de classes
 CLASS_MAP = {
     "gui": GUI,
@@ -355,7 +534,8 @@ CLASS_MAP = {
     "image": Image,
     "infobox": InfoBox,
     "slot": Slot,
-    "equipslot": EquipmentSlot
+    "equipslot": EquipmentSlot,
+    "statsbar": StatsBar
 }
 
 
@@ -861,6 +1041,24 @@ def instantiate_element(cls, args, parent, screen_width=800, screen_height=600):
             align = (args.get('align') or 'left').lower()
 
             return cls(x, y, text_value, font_size, color, font_name, align, parent)
+        
+        elif cls == StatsBar:
+            # Parse de tamanhos primeiro
+            sizex = int(args.get('sizex', 100))
+            sizey = int(args.get('sizey', 20))
+            
+            # Parse de coordenadas com suporte a valores relativos
+            x = parse_coordinate(args.get('x', 0), screen_width, sizex)
+            y = parse_coordinate(args.get('y', 0), screen_height, sizey)
+            
+            # Texturas da barra vazia e cheia
+            texture_empty = parse_texture(args.get('texture_empty', args.get('empty', '0')))
+            texture_full = parse_texture(args.get('texture_full', args.get('full', '0')))
+            
+            # Nome do status a ser monitorado
+            stat_name = args.get('stat', args.get('status', 'hp'))
+            
+            return cls(x, y, sizex, sizey, texture_empty, texture_full, stat_name, parent)
         
     except Exception as e:
         print(f"Erro ao instanciar elemento {cls.__name__}: {e}")

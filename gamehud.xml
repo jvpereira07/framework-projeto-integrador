@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gui>
+    <!-- HUD do jogo com barras de status -->
+    
+    <!-- Container principal para o HUD no canto superior esquerdo -->
+    <container x="10" y="10" sizex="250" sizey="100" texture="none" border="false">
+        
+        <!-- Barra de HP -->
+        <statsbar x="10" y="10" sizex="200" sizey="20" 
+                  texture_empty="none" texture_full="none" stat="hp" />
+        
+        <!-- Texto do HP -->
+        <text x="10" y="35" text="HP" font_size="14" color="255,255,255,255" />
+        
+        
+        
+       
+        
+    </container>
+    
+</gui>

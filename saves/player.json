@@ -1,17 +1,17 @@
 {
     "id": 1,
     "position": {
-        "x": 12,
-        "y": 79
+        "x": 224,
+        "y": 168
     },
     "stats": {
         "hp": 150,
         "maxHp": 150,
         "regenHp": 0.5,
-        "mana": 100,
+        "mana": 80,
         "maxMana": 100,
         "regenMana": 0.3,
-        "stamina": 80,
+        "stamina": 60,
         "maxStamina": 80,
         "regenStamina": 0.4,
         "damage": 15,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 312,
+        "quant": 360,
         "inv": [
             {
                 "item_type": "Consumable",
