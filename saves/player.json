@@ -1,8 +1,8 @@
 {
     "id": 1,
     "position": {
-        "x": 271,
-        "y": 332
+        "x": 190,
+        "y": 148
     },
     "stats": {
         "hp": 150,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 32,
+        "quant": 280,
         "inv": [
             {
                 "item_type": "Consumable",
@@ -63,21 +63,22 @@
             },
             {
                 "item_type": "Weapon",
-                "name": "Machado Flamejante",
+                "name": "Espada Laminar",
                 "texture": null,
+                "texture_action": null,
                 "classe": "Geral",
-                "damage": 25,
-                "critical": 0.05,
-                "range": 1.8,
-                "speed": 3,
+                "damage": 18,
+                "critical": 0.15,
+                "range": 1.5,
+                "speed": 3.0,
                 "move": 0,
                 "condition": null,
-                "special": 2,
+                "special": 1,
                 "ability": "Nenhuma",
                 "element": null,
                 "slot": "hand1",
                 "description": "",
-                "id": 4,
+                "id": 3,
                 "quant": 1
             }
         ]
@@ -113,21 +114,22 @@
         "arm": null,
         "hand1": {
             "item_type": "Weapon",
-            "name": "Espada Laminar",
+            "name": "Machado Flamejante",
             "texture": null,
+            "texture_action": 24,
             "classe": "Geral",
-            "damage": 18,
-            "critical": 0.15,
-            "range": 1.5,
-            "speed": 3.0,
+            "damage": 25,
+            "critical": 0.05,
+            "range": 1.8,
+            "speed": 3,
             "move": 0,
             "condition": null,
-            "special": 1,
+            "special": 2,
             "ability": "Nenhuma",
             "element": null,
             "slot": "hand1",
             "description": "",
-            "id": 3
+            "id": 4
         },
         "hand2": null
     }

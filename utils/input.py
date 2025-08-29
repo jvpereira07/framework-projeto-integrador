@@ -212,8 +212,49 @@ def control(input,player,map):
         player.active_hand = 1
     if input.get_key_pressed("key_2"):
         player.active_hand = 2
-    if input.get_mouse_button(0) and player.active_hand == 1:
-        player.equip.hand1.atack(mx,my,player.posx,player.posy)
-    if input.get_mouse_button(0) and player.active_hand == 2:
-        player.equip.hand2.atack(mx,my,player.posx,player.posy)
+    
+    # Sistema de combate com direcionamento do player
+    if input.get_mouse_button(0):
+        # Calcula a direção do mouse em relação ao player
+        # Considera que o player está no centro da tela
+        try:
+            import pygame as _pg
+            screen_w, screen_h = _pg.display.get_surface().get_size()
+        except Exception:
+            # Fallback caso não consiga obter o tamanho da tela
+            screen_w, screen_h = 1920, 1080
+        
+        # Calcula diferença entre posição do mouse e centro da tela
+        dx_screen = mx - (screen_w / 2)
+        dy_screen = my - (screen_h / 2)
+        
+        # Define a direção do player baseada na posição do mouse
+        if abs(dx_screen) >= abs(dy_screen):
+            # Movimento horizontal predomina
+            player.direction = "right" if dx_screen >= 0 else "left"
+        else:
+            # Movimento vertical predomina
+            player.direction = "down" if dy_screen >= 0 else "up"
+        
+        # Executa ataque com a arma da mão ativa usando o método correto do player
+        active_weapon = None
+        if player.active_hand == 1 and hasattr(player.equip, 'hand1') and player.equip.hand1:
+            active_weapon = player.equip.hand1
+        elif player.active_hand == 2 and hasattr(player.equip, 'hand2') and player.equip.hand2:
+            active_weapon = player.equip.hand2
+        
+        # Usa o método atack do player que já trata coordenadas do mundo
+        if active_weapon:
+            # Converte coordenadas da tela para coordenadas do mundo
+            world_mx = player.posx + dx_screen
+            world_my = player.posy + dy_screen
+            player.atack(active_weapon, world_mx, world_my)
+            
+            # Sistema de animação de ataque
+            player.attacking = True
+            # Define tempo para parar a animação (0.3 segundos)
+            import time
+            if not hasattr(player, '_attack_anim_until'):
+                player._attack_anim_until = 0
+            player._attack_anim_until = time.time() + 0.3
     return player

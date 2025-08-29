@@ -1,6 +1,7 @@
 from core.item import Item
 from core.entity import EControl
 import sqlite3
+from core.resources import load_sprite_from_db
 
 def get_item_from_db(item_id):
     """Carrega um item do banco de dados pelo ID e retorna um objeto Item."""
@@ -14,10 +15,17 @@ def get_item_from_db(item_id):
         if not row:
             return None
             
-        # Mapear os campos da tabela (baseado no Resto.sql)
-        (id, item_type, name, texture, description, heal, mana, stamina, effect,
-         defense, resistance, regen, speed, attack, critical, mana_regen, 
-         classe, condition, special, slot, damage, range_val, move, ability) = row
+        # Mapear os campos da tabela (incluindo texture_action)
+        # Note: precisamos verificar se texture_action existe na linha
+        if len(row) >= 25:  # Se a tabela tem a nova coluna texture_action
+            (id, item_type, name, texture, description, heal, mana, stamina, effect,
+             defense, resistance, regen, speed, attack, critical, mana_regen, 
+             classe, condition, special, slot, damage, range_val, move, ability, texture_action) = row
+        else:  # Fallback para tabelas antigas sem texture_action
+            (id, item_type, name, texture, description, heal, mana, stamina, effect,
+             defense, resistance, regen, speed, attack, critical, mana_regen, 
+             classe, condition, special, slot, damage, range_val, move, ability) = row
+            texture_action = None
         
         # Criar o objeto baseado no tipo
         if item_type == "Consumable":
@@ -33,7 +41,7 @@ def get_item_from_db(item_id):
         elif item_type == "Weapon":
             return Weapon(name, classe or "", damage or 0, critical or 0,
                         range_val or 0, speed or 0, move or "", special or "",
-                        ability or "", texture or "", description or "", id)
+                        ability or "", texture or "", texture_action or "", description or "", id)
         else:
             return None
     except Exception as e:
@@ -167,7 +175,7 @@ class KeyItem(Item):
         }
 
 class Weapon(Item):
-    def __init__(self, name, classe, damage, critical, range, speed, move, special, ability, texture, description, id=None):
+    def __init__(self, name, classe, damage, critical, range, speed, move, special, ability, texture, texture_action=None, description="", id=None):
         super().__init__(name, "Weapon", texture, description, id)
         self.classe = classe
         self.damage = damage
@@ -177,10 +185,13 @@ class Weapon(Item):
         self.move = move
         self.projectile = special
         self.ability = ability
+        self.texture_action = load_sprite_from_db(texture_action)
         self.cooldown = 0
         self.max_cooldown = int(120 / self.speed)
         # Define slots padrão para armas baseado na classe
         self.slot = self._get_weapon_slot(classe)
+        
+        
     
     def _get_weapon_slot(self, classe):
         """Determina o slot baseado na classe da arma"""
@@ -217,6 +228,7 @@ class Weapon(Item):
             "item_type": "Weapon",
             "name": self.name,
             "texture": self.texture,
+            "texture_action": self.texture_action,
             "classe": self.classe,
             "damage": self.damage,
             "critical": self.critical,
@@ -244,3 +256,4 @@ class Weapon(Item):
     def update_cooldown(self):
         if self.cooldown > 0:
             self.cooldown -= 1
+    

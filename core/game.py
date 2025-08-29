@@ -6,7 +6,7 @@ import sys
 import io
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from core.entity import EControl as EntityTick
+from core.entity import EControl as EntityTick, PControl as PlayerTick
 from core.event import EventControl as EventTick
 from core.event import Event
 from core.map import Map
@@ -65,7 +65,8 @@ class Game:
         self.clock = pygame.time.Clock()
         self.time = time.time()
         self.map = Map('assets/data/map.json','assets/images/layers/basic.png')
-        EntityTick.add(Player(1,"saves/player.json",load_sprite_from_db(8)))
+        # Instancia o player no novo PlayerController
+        PlayerTick.add(Player(1,"saves/player.json",load_sprite_from_db(8)))
         self.mouse = Mouse(32, 32, 12,11)
         pygame.mouse.set_visible(False)
         
@@ -86,9 +87,11 @@ class Game:
         # Estado inicial da interface
         self.game_state = "playing"  # menu, playing, inventory
         self.interface_manager.show_interface("hud")
-
+        from assets.classes.entities import Mob
+        m = Mob(1,0,0,4)
+        EntityTick.add(m)
         # Conecta o inventário do player à interface
-        self.interface_manager.connect_inventory_to_interface( EntityTick.Entities[0].inv)
+        self.interface_manager.connect_inventory_to_interface(PlayerTick.get_main_player().inv)
 
     def run(self):
             ########Loop principal e controles:
@@ -117,10 +120,13 @@ class Game:
                 # Só atualiza entidades e eventos quando estamos jogando
                 if self.game_state == "playing":
                     EntityTick.run(self.map)
+                    PlayerTick.run(self.map)
                     EventTick.run(self.time)
                     
                     # Controlador do player (apenas durante o jogo)
-                    EntityTick.Entities[0] = control(self.input,EntityTick.Entities[0],self.map)
+                    main_player = PlayerTick.get_main_player()
+                    if main_player:
+                        control(self.input, main_player, self.map)
                 
             ###### Renderização gráfica
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -128,9 +134,12 @@ class Game:
                 
                 # Renderiza o mundo do jogo apenas quando estamos jogando
                 if self.game_state != "menu":
-                    # Renderiza o mundo do jogo primeiro
-                    self.map.render(0,0,self.zoom,EntityTick.Entities[0],self.CONFIG["screen"]["width"],self.CONFIG["screen"]["height"])
-                    EntityTick.draw(EntityTick.Entities[0].posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),EntityTick.Entities[0].posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
+                    main_player = PlayerTick.get_main_player()
+                    if main_player:
+                        # Renderiza o mundo do jogo primeiro
+                        self.map.render(0,0,self.zoom,main_player,self.CONFIG["screen"]["width"],self.CONFIG["screen"]["height"])
+                        EntityTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
+                        PlayerTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
                 
                 # Reseta completamente a matriz de transformação para a interface
                 glMatrixMode(GL_MODELVIEW)
@@ -154,7 +163,9 @@ class Game:
             # Restaura stdout original antes de sair
             sys.stdout = self.action_capture.original_stdout
             pygame.quit()
-            save_player(EntityTick.Entities[0],"saves/player.json")
+            main_player = PlayerTick.get_main_player()
+            if main_player:
+                save_player(main_player,"saves/player.json")
     
     def _handle_interface_state_changes(self, mx, my, mouse_pressed):
         """Gerencia mudanças de estado baseadas nas interfaces e teclas pressionadas"""

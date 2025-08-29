@@ -295,8 +295,8 @@ class EquipmentSlot(Button):
 
     def refresh_from_player(self):
         try:
-            from core.entity import EControl
-            player = EControl.Entities[0] if EControl.Entities else None
+            from core.entity import PControl
+            player = PControl.get_main_player()
             if not player or not hasattr(player, 'equip'):
                 self.item_image = None
                 return
@@ -325,8 +325,8 @@ class EquipmentSlot(Button):
         try:
             # Executa apenas na transição de clique (debounce)
             if clicked and not self._handled_click:
-                from core.entity import EControl
-                player = EControl.Entities[0] if EControl.Entities else None
+                from core.entity import PControl
+                player = PControl.get_main_player()
                 if player and hasattr(player, 'equip'):
                     # Atualiza InfoBox com o item atual do slot de equipamento (não desequipa)
                     try:
@@ -1128,19 +1128,15 @@ def register_default_actions():
                 
             # Obtém inventário através da entidade do jogador
             try:
-                from core.entity import EControl
-                if EControl.Entities and len(EControl.Entities) > 0:
-                    player = EControl.Entities[0]
-                    if hasattr(player, 'inv'):
-                        player_inventory = player.inv
-                    else:
-                        print("⚠ Jogador não possui inventário")
-                        return
+                from core.entity import PControl
+                player = PControl.get_main_player()
+                if player and hasattr(player, 'inv'):
+                    player_inventory = player.inv
                 else:
-                    print("⚠ Nenhuma entidade jogador encontrada")
+                    print("⚠ Jogador não encontrado ou não possui inventário")
                     return
             except ImportError:
-                print("⚠ Não foi possível importar EControl")
+                print("⚠ Não foi possível importar PControl")
                 return
                 
             # Realiza o drop
@@ -1187,12 +1183,12 @@ def register_default_actions():
                 return
                 
             # Obtém referências do jogador
-            from core.entity import EControl
-            if not EControl.Entities or len(EControl.Entities) == 0:
+            from core.entity import PControl
+            player = PControl.get_main_player()
+            if not player:
                 print("⚠ Nenhuma entidade jogador encontrada")
                 return
                 
-            player = EControl.Entities[0]
             if not hasattr(player, 'inv') or not hasattr(player, 'equip'):
                 print("⚠ Jogador não possui inventário ou equipamentos")
                 return
@@ -1248,12 +1244,12 @@ def register_default_actions():
                 return
                 
             # Obtém referências do jogador
-            from core.entity import EControl
-            if not EControl.Entities or len(EControl.Entities) == 0:
+            from core.entity import PControl
+            player = PControl.get_main_player()
+            if not player:
                 print("⚠ Nenhuma entidade jogador encontrada")
                 return
                 
-            player = EControl.Entities[0]
             if not hasattr(player, 'inv') or not hasattr(player, 'equip'):
                 print("⚠ Jogador não possui inventário ou equipamentos")
                 return
@@ -1307,12 +1303,12 @@ def register_default_actions():
                 return
                 
             # Obtém referências do jogador
-            from core.entity import EControl
-            if not EControl.Entities or len(EControl.Entities) == 0:
+            from core.entity import PControl
+            player = PControl.get_main_player()
+            if not player:
                 print("⚠ Nenhuma entidade jogador encontrada")
                 return
                 
-            player = EControl.Entities[0]
             if not hasattr(player, 'inv'):
                 print("⚠ Jogador não possui inventário")
                 return

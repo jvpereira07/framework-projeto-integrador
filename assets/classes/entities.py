@@ -74,21 +74,21 @@ class Mob(Entity):
         super().__init__(id, x, y, 0, 0, 0)  # Inicializando com 0 para sizex e sizey por enquanto
         self.mob = self.load(idMob)  # Buscar o Creature com idMob e criar o objeto
         if self.mob:
-            self.name = self.mob.name
-            self.stats = Status(self.mob.stats.maxHp, self.mob.stats.maxHp, self.mob.stats.regenHp,
-                                self.mob.stats.maxMana, self.mob.stats.maxMana, self.mob.stats.regenMana,
-                                self.mob.stats.stamina, self.mob.stats.maxStamina, self.mob.stats.regenStamina,
-                                self.mob.stats.damage, self.mob.stats.critical, self.mob.stats.defense,
-                                self.mob.stats.speed, self.mob.stats.ace)
-            self.sizex = self.mob.sizex
-            self.sizey = self.mob.sizey
-            self.texture = load_sprite_from_db(self.mob.idTextura)  # Usar a textura do Creature
-            self.behavior = load_behavior_from_db(self.mob.behaviors,conditions,actions)
+            self.name = self.mob['Name']
+            self.stats = Status(self.mob['maxHp'], self.mob['maxHp'], self.mob['regenHp'],
+                                self.mob['maxMana'], self.mob['maxMana'], self.mob['regenMana'],
+                                self.mob['maxStamina'], self.mob['maxStamina'], self.mob['regenStamina'],
+                                self.mob['damage'], self.mob['critical'], self.mob['defense'],
+                                self.mob['speed'], self.mob['ace'])
+            self.sizex = self.mob['sizex']
+            self.sizey = self.mob['sizey']
+            self.texture = load_sprite_from_db(self.mob['idTextura'])  # Usar a textura do Creature
+            self.behavior = load_behavior_from_db(self.mob['behaviors'],conditions,actions)
             self.type = "mob"
         else:
             print(f"Não foi possível carregar o Creature com id {idMob}.")
             self.name = "Unknown"
-            self.stats = Status(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            self.stats = Status(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             self.sizex = 0
             self.sizey = 0
             self.texture = 0
@@ -327,6 +327,14 @@ class Player(Entity):
                 id=id_
             )
         elif item_type == "Weapon":
+            # Processa texture_action se existir
+            texture_action = item_data.get("texture_action", None)
+            if texture_action is not None and texture_action != "":
+                try:
+                    texture_action = int(texture_action)
+                except Exception:
+                    texture_action = None
+            
             item = Weapon(
                 name=item_data.get("name", "Arma Desconhecida"),
                 classe=item_data.get("classe", "Geral"),
@@ -343,6 +351,22 @@ class Player(Entity):
             )
             item.condition = item_data.get("condition", 100)
             item.element = item_data.get("element", None)
+            
+            # Carrega texture_action como sprite se disponível
+            if texture_action is not None:
+                try:
+                    from core.resources import load_sprite_from_db
+                    item.texture_action = texture_action
+                    item._loaded_action_texture = load_sprite_from_db(texture_action)
+                    print(f"✓ Carregou texture_action {texture_action} para arma {item.name}")
+                except Exception as e:
+                    print(f"✗ Erro ao carregar texture_action {texture_action} para {item.name}: {e}")
+                    item.texture_action = texture_action
+                    item._loaded_action_texture = None
+            else:
+                item.texture_action = None
+                item._loaded_action_texture = None
+                print(f"⚠ Arma {item.name} não possui texture_action")
         elif item_type == "KeyItem":
             item = KeyItem(
                 name=item_data.get("name", "Item Chave Desconhecido"),
@@ -417,6 +441,7 @@ class Player(Entity):
             self.moving = False
 
     def atack(self, weapon, mousex, mousey):
+        print("teste")
         dirx = mousex - self.posx
         diry = mousey - self.posy
 
@@ -433,8 +458,8 @@ class Player(Entity):
         else:
             print("Erro: a arma não possui o método 'atack'.")
     def dash(self):
-        if self.cooldown_dash():
-        ##Quando o dash pode acontecer:
+        if self.cooldown_dash() and self.moving:
+        
             self.stats.add_effect(Effect("speed", self.stats.speed * 2,30))
             self.last_dash_time = time.time()
             
@@ -482,9 +507,18 @@ class Player(Entity):
             self.equip.hand1.update_cooldown()
         if self.equip.hand2:
             self.equip.hand2.update_cooldown()
-        self.attacking = False
+        
+        # Controla animação de ataque baseada no tempo
+        if hasattr(self, '_attack_anim_until'):
+            import time
+            if time.time() >= self._attack_anim_until:
+                self.attacking = False
+        else:
+            self.attacking = False
+            
         self.dashing = not self.cooldown_dash()
         self.control_animation()
+        
 
         
 def save_player(player, filename="saves/player.json"):
