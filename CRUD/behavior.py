@@ -5,15 +5,26 @@ import json
 import os
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-from assets.behaviors.actions import actions
-from assets.behaviors.conditions import conditions
+
+# Suporte a execução direta deste script (ajusta sys.path para encontrar 'assets')
+try:
+    from assets.behaviors.actions import actions as _ACTIONS
+    from assets.behaviors.conditions import conditions as _CONDITIONS
+except ModuleNotFoundError:
+    import sys
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if BASE_DIR not in sys.path:
+        sys.path.insert(0, BASE_DIR)
+    from assets.behaviors.actions import actions as _ACTIONS
+    from assets.behaviors.conditions import conditions as _CONDITIONS
 
 # Simulando ações, condições e estruturas carregadas de arquivos externos
-actions = actions  # Agora é um dicionário {nome: função}
-conditions = conditions  # Agora é um dicionário {nome: função}
+actions = _ACTIONS  # Agora é um dicionário {nome: função}
+conditions = _CONDITIONS  # Agora é um dicionário {nome: função}
 structures = ["Sequence", "Selector", "Inverter", "Succeeder"]
 
-os.makedirs("data", exist_ok=True)
+# Garante que a pasta de banco exista em assets/data
+os.makedirs("assets/data", exist_ok=True)
 
 with sqlite3.connect("assets/data/data.db") as conn:
     cursor = conn.cursor()
@@ -164,7 +175,7 @@ class BehaviorTreeEditor:
             return
 
         structure = json.dumps(self.selected_nodes)
-        with sqlite3.connect("data/data.db") as conn:
+        with sqlite3.connect("assets/data/data.db") as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT INTO BehaviorTree (name, structure) VALUES (?, ?)", (name, structure))
             conn.commit()
@@ -174,7 +185,7 @@ class BehaviorTreeEditor:
 
     def load_tree_list(self):
         self.tree_listbox.delete(0, tk.END)
-        with sqlite3.connect("data/data.db") as conn:
+        with sqlite3.connect("assets/data/data.db") as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id, name FROM BehaviorTree")
             for row in cursor.fetchall():
@@ -184,7 +195,7 @@ class BehaviorTreeEditor:
         selection = self.tree_listbox.curselection()
         if selection:
             tree_id = int(self.tree_listbox.get(selection[0]).split(" - ")[0])
-            with sqlite3.connect("data/data.db") as conn:
+            with sqlite3.connect("assets/data/data.db") as conn:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM BehaviorTree WHERE id = ?", (tree_id,))
                 conn.commit()
@@ -195,7 +206,7 @@ class BehaviorTreeEditor:
         selection = self.tree_listbox.curselection()
         if selection:
             tree_id = int(self.tree_listbox.get(selection[0]).split(" - ")[0])
-            with sqlite3.connect("data/data.db") as conn:
+            with sqlite3.connect("assets/data/data.db") as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT name, structure FROM BehaviorTree WHERE id = ?", (tree_id,))
                 row = cursor.fetchone()
@@ -219,7 +230,7 @@ class BehaviorTreeEditor:
             tree_id = int(self.tree_listbox.get(selection[0]).split(" - ")[0])
             name = self.tree_name_var.get()
             structure = json.dumps(self.selected_nodes)
-            with sqlite3.connect("data/data.db") as conn:
+            with sqlite3.connect("assets/data/data.db") as conn:
                 cursor = conn.cursor()
                 cursor.execute("UPDATE BehaviorTree SET name = ?, structure = ? WHERE id = ?", (name, structure, tree_id))
                 conn.commit()

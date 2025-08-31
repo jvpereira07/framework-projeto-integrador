@@ -251,6 +251,18 @@ def control(input,player,map):
             player.atack(active_weapon, world_mx, world_my)
             
             # Sistema de animação de ataque
+            # Se a arma tiver textura de ação, reinicia a fase para começar junto ao player
+            try:
+                if hasattr(active_weapon, '_loaded_action_texture') and active_weapon._loaded_action_texture:
+                    active_weapon._loaded_action_texture.numFrame = 0.0
+            except Exception:
+                pass
+            # Reset do índice de frame do player no início do ataque
+            try:
+                if not getattr(player, 'attacking', False) and hasattr(player, 'texture') and hasattr(player.texture, 'numFrame'):
+                    player.texture.numFrame = 0.0
+            except Exception:
+                pass
             player.attacking = True
             # Define tempo para parar a animação (0.3 segundos)
             import time

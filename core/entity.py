@@ -13,8 +13,8 @@ class Entity:
         self.texture = texture
         self.facing = "left"
     def move(self, x, y, map):
-        hitbox_width = self.sizex // 2
-        hitbox_height = self.sizey // 2
+        hitbox_width = self.sizex 
+        hitbox_height = self.sizey 
     
         can_move = True
         for dy in range(hitbox_height):
@@ -122,6 +122,12 @@ class PControl:
                 
                 if active_weapon and hasattr(active_weapon, '_loaded_action_texture') and active_weapon._loaded_action_texture:
                     weapon_texture = active_weapon._loaded_action_texture
+                    # Vincula o numFrame da arma ao do player para manter a fase igual
+                    try:
+                        if hasattr(player, 'texture') and hasattr(player.texture, 'numFrame'):
+                            weapon_texture.numFrame = player.texture.numFrame
+                    except Exception:
+                        pass
                     weapon_texture.draw(screen_x, screen_y, player.anim - 12, zoom)
     
     def get_main_player():

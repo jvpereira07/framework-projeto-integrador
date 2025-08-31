@@ -244,10 +244,15 @@ class Weapon(Item):
             "id": self.id
         }
 
-    def atack(self, mousex, mousey, playerPosx, playerPosy):
+    def atack(self, mousex, mousey, playerPosx, playerPosy, anim_row: int = 0):
         if self.cooldown == 0:
             from assets.classes.entities import Projectile
             p1 = Projectile(0, playerPosx, playerPosy, self.projectile, mousex, mousey)
+            try:
+                # Define a linha de animação do projétil igual ao ataque da arma
+                p1.anim = int(anim_row)
+            except Exception:
+                pass
             p1.posx += mousex * 16
             p1.posy += mousey * 16
             EControl.add(p1)

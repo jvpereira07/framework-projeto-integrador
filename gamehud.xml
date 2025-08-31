@@ -3,14 +3,14 @@
     <!-- HUD do jogo com barras de status -->
     
     <!-- Container principal para o HUD no canto superior esquerdo -->
-    <container x="10" y="10" sizex="250" sizey="120" texture="none" border="false">
+    <container x="90%" y="5%" sizex="200" sizey="32" texture="none" border="false">
         
         <!-- Barra de HP -->
         
-        <text x="90%" y="7%" text="HP" font_size="14" color="255,0,0,255" />
+        <text x="95%" y="7%" text="HP" font_size="14" color="255,0,0,255" />
         <!-- Barra vertical (preenche de cima para baixo) -->
         <!-- Barra horizontal reversa (direita -> esquerda) -->
-    <statsbar x="90%" y="5%" sizex="200" sizey="25"
+    <statsbar x="95%" y="5%" sizex="200" sizey="25"
               texture_empty="28" texture_full="27" stat="hp"
               orientation="horizontal" direction="positive" />
     

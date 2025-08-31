@@ -454,7 +454,10 @@ class Player(Entity):
             diry = 0
 
         if hasattr(weapon, 'atack') and callable(weapon.atack):
-            weapon.atack(dirx, diry, self.posx, self.posy)
+            # Define a linha de animação da arma pelo direcionamento atual
+            dir_to_row = { 'down': 0, 'right': 1, 'up': 2, 'left': 3 }
+            weapon_row = dir_to_row.get(self.direction, 0)
+            weapon.atack(dirx, diry, self.posx, self.posy, anim_row=weapon_row)
         else:
             print("Erro: a arma não possui o método 'atack'.")
     def dash(self):
@@ -501,6 +504,9 @@ class Player(Entity):
                 "left": 7
             }.get(self.direction, 4)
     def run(self,map):
+        # Detecta transições de ataque para resetar o índice de frame
+        
+
         self.cooldown_dash()
         self.stats.update_effects()  
         if self.equip.hand1:
@@ -518,6 +524,18 @@ class Player(Entity):
             
         self.dashing = not self.cooldown_dash()
         self.control_animation()
+
+        # Aplica resets de frame nas transições de ataque (início e fim)
+        try:
+            if hasattr(self, 'texture') and hasattr(self.texture, 'numFrame'):
+                # Começou a atacar neste frame
+                if (not self.attacking) and self.attacking:
+                    self.texture.numFrame = 0.0
+                # Terminou o ataque neste frame
+                if self.attacking and (not self.attacking):
+                    self.texture.numFrame = 0.0
+        except Exception:
+            pass
         
 
         

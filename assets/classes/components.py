@@ -413,9 +413,6 @@ class StatsBar(GUI):
             max_stat_name = f"max{self.stat_name.capitalize()}"
             max_value = getattr(player.stats, max_stat_name, 100)
             
-            # Debug: mostra os valores obtidos
-            print(f"StatsBar {self.stat_name}: current={current_value}, max={max_value}")
-            
             # Garante que os valores são válidos
             current_value = max(0, float(current_value))
             max_value = max(1, float(max_value))  # Evita divisão por zero
