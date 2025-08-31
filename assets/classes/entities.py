@@ -561,3 +561,6 @@ class Breakable(Entity):
     def destroy(self):
         EControl.rem(self.id)
         # Aqui você pode adicionar lógica para soltar itens ou efeitos visuais ao ser destruído
+    def run(self, map):
+        pass
+    
