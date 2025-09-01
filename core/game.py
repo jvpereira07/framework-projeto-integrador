@@ -88,7 +88,7 @@ class Game:
         self.game_state = "playing"  # menu, playing, inventory
         self.interface_manager.show_interface("hud")
         from assets.classes.entities import Mob
-        m = Mob(1,0,0,4)
+        m = Mob(1,0,0,5)
         EntityTick.add(m)
         # Conecta o inventário do player à interface
         self.interface_manager.connect_inventory_to_interface(PlayerTick.get_main_player().inv)
