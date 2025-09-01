@@ -557,7 +557,25 @@ class Breakable(Entity):
             self.destroy()
     def destroy(self):
         EControl.rem(self.id)
-        # Aqui você pode adicionar lógica para soltar itens ou efeitos visuais ao ser destruído
+    def check_collision(self, other):
+        return (
+            self.posx < other.posx + other.sizex and
+            self.posx + self.sizex > other.posx and
+            self.posy < other.posy + other.sizey and
+            self.posy + self.sizey > other.posy
+        )
+
     def run(self, map):
-        pass
-    
+        for entity in PControl.Players:
+            if self.check_collision(entity):
+                if isinstance(entity, Player):
+                    if entity.dashing or entity.attacking:
+                        self.take_damage(self.durability)
+                    else:
+                        entity.velx = 0
+                        entity.vely = 0
+                        entity.decPosx = 0
+                        entity.decPosy = 0
+                elif hasattr(entity, 'damage'):
+                    # Se for outra entidade que causa dano
+                    self.take_damage(entity.damage)
