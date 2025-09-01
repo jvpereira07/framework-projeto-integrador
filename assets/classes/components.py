@@ -1492,7 +1492,7 @@ def register_default_actions():
                 player.inv.get(old_equipped)
                 print(f"✓ {old_equipped.name} foi desequipado e retornado ao inventário")
                 
-            print(f"✓ {removed_item.name} foi equipado no slot {removed_item.slot}")
+            
             
             # Limpa seleção atual
             current_interface.set_selected_item(None)
@@ -1760,39 +1760,45 @@ class InterfaceManager:
             return False
     
     def connect_inventory_to_interface(self, player_inventory):
-        """Conecta o inventário do jogador aos slots da interface"""
-        # Armazena referência do inventário para uso em ações
+        """Conecta o inventário do jogador aos slots da interface, incluindo slots de armas (hand1/hand2)."""
         self.player_inventory = player_inventory
-        
         inventory_interface = self.interfaces.get('inventory')
         if not inventory_interface:
             print("⚠ Interface de inventário não encontrada")
             return False
-        
-        # Busca recursivamente por slots na interface
+        # Busca recursiva por slots de inventário e equipamento
         slots_found = []
+        equip_slots_found = {}
         def find_slots_recursive(elements):
             for element in elements:
                 if isinstance(element, Slot) and element.slot_id is not None:
                     slots_found.append(element)
+                if isinstance(element, EquipmentSlot) and element.equip_slot_name:
+                    equip_slots_found[element.equip_slot_name] = element
                 if hasattr(element, 'children') and element.children:
                     find_slots_recursive(element.children)
-        
         find_slots_recursive(inventory_interface.elements)
         # Garante que o inventário tenha tamanho suficiente para todos os slots
         if slots_found:
             max_slot_id = max(s.slot_id for s in slots_found if s.slot_id is not None)
             required_size = max_slot_id + 1
             if len(player_inventory.itens) < required_size:
-                # Expande com None sem alterar a quantidade atual
                 player_inventory.itens.extend([None] * (required_size - len(player_inventory.itens)))
-        
         # Conecta os slots encontrados ao inventário
         for slot in slots_found:
             if slot.slot_id < len(player_inventory.itens):
                 player_inventory.connect_ui_slot(slot, slot.slot_id)
                 print(f"✓ Slot {slot.slot_id} conectado ao inventário")
-        print(f"✓ {len(slots_found)} slots conectados ao inventário do player")
+        # Conecta slots de equipamento hand1/hand2
+        equip = getattr(player_inventory, 'owner', None)
+        if equip and hasattr(equip, 'equip'):
+            for hand in ['hand1', 'hand2']:
+                slot_gui = equip_slots_found.get(hand)
+                item = getattr(equip.equip, hand, None)
+                if slot_gui:
+                    slot_gui.item_image = item.texture if item and hasattr(item, 'texture') else None
+                    print(f"✓ Slot de arma '{hand}' conectado ao equipamento")
+        print(f"✓ {len(slots_found)} slots de inventário e {len(equip_slots_found)} slots de equipamento conectados")
         return True
     
     def show_interface(self, name, overlay=False):

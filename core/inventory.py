@@ -25,11 +25,11 @@ class Inventory:
             if self.ui_slots[i] is not None:
                 self._update_slot(i)
 
-    def get(self, item):
+    def get(self, item,quant=1):
         if item.item_type == "Consumable":
             for item1 in self.itens:
                 if item1 is not None and item1.id == item.id:
-                    item1.quant += 1
+                    item1.quant += quant
                     self._update_all_slots()  # Atualiza interface
                     return
                 
@@ -53,7 +53,7 @@ class Inventory:
 
     def __repr__(self):
         return f"Inventory({[str(item) if item else 'Vazio' for item in self.itens]})"
-        return None
+        
 class Equiped:
     def __init__(self):
         self.head = None
@@ -67,16 +67,31 @@ class Equiped:
         self.arm = None
         self.hand1 = None
         self.hand2 = None
-    def equip(self,item):
-        slot = item.slot
-        if not hasattr(self, slot):
-            raise ValueError(f"Slot inválido: {slot}")
-        if hasattr(self, slot):  
-            old_item = getattr(self, slot)  
-            setattr(self, slot, item)  
-            return old_item  
+    def equip(self, item):
+        # Se for arma, tenta hand1, senão hand2
+        if getattr(item, 'item_type', None) == 'Weapon':
+            if self.hand1 is None:
+                old_item = self.hand1
+                self.hand1 = item
+                return old_item
+            elif self.hand2 is None:
+                old_item = self.hand2
+                self.hand2 = item
+                return old_item
+            else:
+                # Ambas ocupadas, substitui hand1
+                old_item = self.hand1
+                self.hand1 = item
+                return old_item
+        else:
+            slot = getattr(item, 'slot', None)
+            if not slot or not hasattr(self, slot):
+                raise ValueError(f"Slot inválido: {slot}")
+            old_item = getattr(self, slot)
+            setattr(self, slot, item)
+            return old_item
 
-    def unEquip(self,slot):
+    def unEquip(self, slot):
         if hasattr(self, slot):  
             old_item = getattr(self, slot)
             setattr(self, slot, None)

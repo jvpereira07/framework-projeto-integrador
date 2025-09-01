@@ -188,26 +188,10 @@ class Weapon(Item):
         self.texture_action = load_sprite_from_db(texture_action)
         self.cooldown = 0
         self.max_cooldown = int(120 / self.speed)
-        # Define slots padrão para armas baseado na classe
-        self.slot = self._get_weapon_slot(classe)
+        # Não define slot fixo; pode ser equipado em hand1 ou hand2
         
-        
-    
-    def _get_weapon_slot(self, classe):
-        """Determina o slot baseado na classe da arma"""
-        weapon_slots = {
-            "espada": "hand1",
-            "sword": "hand1", 
-            "arco": "hand1",
-            "bow": "hand1",
-            "machado": "hand1",
-            "axe": "hand1",
-            "escudo": "hand2",
-            "shield": "hand2",
-            "duas_maos": "hand1",  # Ocupa hand1, mas pode necessitar hand2 livre
-            "two_handed": "hand1"
-        }
-        return weapon_slots.get(classe.lower(), "hand1")  # Default para hand1
+
+   
 
     def __str__(self):
         return (
@@ -239,7 +223,6 @@ class Weapon(Item):
             "special": self.projectile,
             "ability": self.ability,
             "element": getattr(self, "element", None),
-            "slot": self.slot,
             "description": self.description,
             "id": self.id
         }
@@ -261,4 +244,4 @@ class Weapon(Item):
     def update_cooldown(self):
         if self.cooldown > 0:
             self.cooldown -= 1
-    
+

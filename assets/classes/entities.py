@@ -474,34 +474,31 @@ class Player(Entity):
     def control_animation(self):
         if self.attacking:
             self.anim = {
-                "down": 12,
-                "right": 13,
-                "up": 14,
-                "left": 15
+                "right": 12,
+                "left": 13,
+                "down": 14,
+                "up": 15
             }.get(self.direction, 12)
-        
         elif self.dashing:
             self.anim = {
-                "down": 8,
-                "right": 9,
-                "up": 10,
-                "left": 11
+                "right": 8,
+                "left": 9,
+                "down": 10,
+                "up": 11
             }.get(self.direction, 8)
-
         elif self.moving:
             self.anim = {
-                "down": 0,
-                "right": 1,
-                "up": 2,
-                "left": 3
+                "right": 4,
+                "left": 5,
+                "down": 6,
+                "up": 7
             }.get(self.direction, 0)
-        
         else:
             self.anim = {
-                "down": 4,
-                "right": 5,
-                "up": 6,
-                "left": 7
+                "right": 0,
+                "left": 1,
+                "down": 2,
+                "up": 3
             }.get(self.direction, 4)
     def run(self,map):
         # Detecta transições de ataque para resetar o índice de frame

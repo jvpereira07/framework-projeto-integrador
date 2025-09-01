@@ -16,9 +16,28 @@ from utils.input import Input, control
 from assets.classes.components import Mouse
 
 # Classe para capturar prints de ações
-
-
-
+class ActionCapture:
+    def __init__(self):
+        self.captured_actions = []
+        self.original_stdout = sys.stdout
+    
+    def write(self, text):
+        # Verifica se é uma ação no formato ACTION:nome
+        text = text.strip()
+        if text.startswith("ACTION:"):
+            action_name = text.replace("ACTION:", "")
+            self.captured_actions.append(action_name)
+        else:
+            # Passa outros prints normalmente
+            self.original_stdout.write(text + '\n')
+    
+    def flush(self):
+        self.original_stdout.flush()
+    
+    def get_actions(self):
+        actions = self.captured_actions.copy()
+        self.captured_actions.clear()
+        return actions
 
 class Game:
     def __init__(self):
@@ -51,7 +70,8 @@ class Game:
         vaso = Breakable(1,100,100,32,32,load_sprite_from_db(29),1,3)
         EntityTick.add(vaso)
         # Sistema de captura de ações dos botões
-        
+        self.action_capture = ActionCapture()
+        sys.stdout = self.action_capture
         
         
         # UI: Sistema de interfaces completo
@@ -143,7 +163,7 @@ class Game:
                 pygame.display.flip()
                 
             # Restaura stdout original antes de sair
-            
+            sys.stdout = self.action_capture.original_stdout
             pygame.quit()
             main_player = PlayerTick.get_main_player()
             if main_player:
@@ -174,17 +194,19 @@ class Game:
                 self.interface_manager.show_interface("hud")
         
         # Ações de interface via self.input
-        if self.input.get_key_pressed("start_game"):
-            self.game_state = "playing"
-            self.interface_manager.show_interface("hud")
-        if self.input.get_key_pressed("close_menu"):
-            self.game_state = "playing"
-            self.interface_manager.show_interface("hud")
-        if self.input.get_key_pressed("close_inventory"):
-            self.game_state = "playing"
-            self.interface_manager.show_interface("hud")
-        if self.input.get_key_pressed("quit_game"):
-            self.running = False
+        captured_actions = self.action_capture.get_actions()
+        for action in captured_actions:
+            if action == "start_game":
+                self.game_state = "playing"
+                self.interface_manager.show_interface("hud")
+            elif action == "close_menu":
+                self.game_state = "playing"
+                self.interface_manager.show_interface("hud")
+            elif action == "close_inventory":
+                self.game_state = "playing"
+                self.interface_manager.show_interface("hud")
+            elif action == "quit_game":
+                self.running = False
 
 game = Game()
 

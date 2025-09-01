@@ -1,14 +1,14 @@
 {
     "id": 1,
     "position": {
-        "x": 223,
-        "y": 163
+        "x": 143,
+        "y": 108
     },
     "stats": {
         "hp": 75,
         "maxHp": 150,
         "regenHp": 0.5,
-        "mana": 80,
+        "mana": 100,
         "maxMana": 100,
         "regenMana": 0.3,
         "stamina": 60,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 588,
+        "quant": 652,
         "inv": [
             {
                 "item_type": "Consumable",
@@ -38,7 +38,7 @@
                 "mana": 100.0,
                 "stamina": 0.0,
                 "effect": "",
-                "quant": 46
+                "quant": 41
             },
             {
                 "item_type": "KeyItem",
@@ -59,27 +59,7 @@
                 "mana": 0.0,
                 "stamina": 0.0,
                 "effect": "",
-                "quant": 37
-            },
-            {
-                "item_type": "Weapon",
-                "name": "Espada Laminar",
-                "texture": null,
-                "texture_action": null,
-                "classe": "Geral",
-                "damage": 18,
-                "critical": 0.15,
-                "range": 1.5,
-                "speed": 3.0,
-                "move": 0,
-                "condition": null,
-                "special": 1,
-                "ability": "Nenhuma",
-                "element": null,
-                "slot": "hand1",
-                "description": "",
-                "id": 3,
-                "quant": 1
+                "quant": 26
             }
         ]
     },
@@ -115,8 +95,8 @@
         "hand1": {
             "item_type": "Weapon",
             "name": "Machado Flamejante",
-            "texture": null,
-            "texture_action": 24,
+            "texture": 30,
+            "texture_action": 31,
             "classe": "Geral",
             "damage": 25,
             "critical": 0.05,
@@ -127,10 +107,26 @@
             "special": 2,
             "ability": "Nenhuma",
             "element": null,
-            "slot": "hand1",
             "description": "",
             "id": 4
         },
-        "hand2": null
+        "hand2": {
+            "item_type": "Weapon",
+            "name": "Espada Laminar",
+            "texture": null,
+            "texture_action": null,
+            "classe": "Geral",
+            "damage": 18,
+            "critical": 0.15,
+            "range": 1.5,
+            "speed": 3.0,
+            "move": 0,
+            "condition": null,
+            "special": 1,
+            "ability": "Nenhuma",
+            "element": null,
+            "description": "",
+            "id": 3
+        }
     }
 }
