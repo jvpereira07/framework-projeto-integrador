@@ -514,6 +514,13 @@ class Player(Entity):
 
         self.cooldown_dash()
         self.stats.update_effects()  
+        
+        # Atualiza efeito visual de dano (herdado da classe Entity)
+        if hasattr(self, 'damage_effect_timer') and self.damage_effect_timer > 0:
+            self.damage_effect_timer -= 1/60  # Assume 60 FPS
+            if self.damage_effect_timer <= 0:
+                self.damage_effect_timer = 0
+                
         if self.equip.hand1:
             self.equip.hand1.update_cooldown()
         if self.equip.hand2:
@@ -571,9 +578,55 @@ class Breakable(Entity):
             self.posy + self.sizey > other.posy
         )
 
+    def check_dash_proximity(self, player):
+        """Verifica se o player está a 1 pixel da hitbox e fazendo dash"""
+        if not player.dashing:
+            return False
+            
+        # Calcula a distância mínima entre as hitboxes
+        # Distância horizontal
+        if player.posx + player.sizex < self.posx:
+            # Player à esquerda do vaso
+            dist_x = self.posx - (player.posx + player.sizex)
+        elif player.posx > self.posx + self.sizex:
+            # Player à direita do vaso
+            dist_x = player.posx - (self.posx + self.sizex)
+        else:
+            # Sobreposição horizontal
+            dist_x = 0
+            
+        # Distância vertical
+        if player.posy + player.sizey < self.posy:
+            # Player acima do vaso
+            dist_y = self.posy - (player.posy + player.sizey)
+        elif player.posy > self.posy + self.sizey:
+            # Player abaixo do vaso
+            dist_y = player.posy - (self.posy + self.sizey)
+        else:
+            # Sobreposição vertical
+            dist_y = 0
+            
+        # Se há sobreposição em ambos os eixos, está colidindo
+        if dist_x == 0 and dist_y == 0:
+            return True
+            
+        # Se há sobreposição em um eixo, verifica o outro
+        if dist_x == 0:
+            return dist_y <= 1
+        elif dist_y == 0:
+            return dist_x <= 1
+        else:
+            # Distância diagonal (usa distância euclidiana)
+            return (dist_x * dist_x + dist_y * dist_y) <= 1
+
     def run(self, map):
         from core.entity import PrjControl, PControl
         for entity in PControl.Players + PrjControl.Projectiles:
+            # Primeiro verifica se o player está fazendo dash próximo ao vaso
+            if isinstance(entity, Player) and self.check_dash_proximity(entity):
+                self.take_damage(self.durability)
+                continue
+                
             if self.check_collision(entity):
                 if isinstance(entity, Player):
                     if entity.dashing or entity.attacking:

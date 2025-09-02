@@ -185,7 +185,7 @@ class Image(GUI):
                 zoom = min(zoom_x, zoom_y)
             except Exception:
                 zoom = 1
-            self.texture.draw(abs_x, abs_y, 0, zoom)
+            self.texture.draw(abs_x, abs_y, 0, zoom, None)
 class InfoBox(GUI):
     ####Caixa que recebe o item e suas informações e a mostra em um campo específico
     def __init__(self, x, y, width, height, texture, parent=None):

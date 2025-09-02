@@ -14,6 +14,12 @@ class Entity:
         self.facing = "left"
         self.attacking = False
         self.type = type
+        # Propriedades para efeito visual de dano
+        self.damage_effect_timer = 0
+        self.damage_effect_duration = 0.8  # 0.8 segundos total
+        self.damage_blink_count = 0
+        self.damage_max_blinks = 4  # 2 piscadas completas (4 mudanças)
+        self.damage_blink_interval = 0.2  # Tempo entre cada mudança de estado
 
     def move(self, x, y, map):
         hitbox_width = self.sizex 
@@ -63,10 +69,18 @@ class Entity:
     def run(self,map):
         if hasattr(self, "stats"):
             self.stats.update_effects()
+        # Atualiza efeito visual de dano
+        if self.damage_effect_timer > 0:
+            self.damage_effect_timer -= 1/60  # Assume 60 FPS
+            if self.damage_effect_timer <= 0:
+                self.damage_effect_timer = 0
         if self.behavior:
             self.behavior.run(self, map)
     def take_damage(self, amount):
         self.stats.hp -= amount
+        # Ativa o efeito visual de dano
+        self.damage_effect_timer = self.damage_effect_duration
+        self.damage_blink_count = 0
         if self.stats.hp <= 0:
             self.kill()
     def kill(self):
@@ -77,6 +91,26 @@ class Entity:
             BrControl.rem(self.id)
         else:
             EControl.rem(self.id)
+    
+    def should_render_damage_effect(self):
+        """Retorna True se a entidade deve ser renderizada com efeito de dano"""
+        if self.damage_effect_timer <= 0:
+            return False
+        
+        # Calcula o tempo decorrido desde o início do efeito
+        elapsed_time = self.damage_effect_duration - self.damage_effect_timer
+        
+        # Calcula em qual ciclo de piscada estamos
+        blink_cycle = int(elapsed_time / self.damage_blink_interval)
+        
+        # Se ainda estamos dentro do período de piscadas
+        if blink_cycle < self.damage_max_blinks:
+            # Retorna True para ciclos pares (0, 2, 4...) = vermelho
+            # Retorna False para ciclos ímpares (1, 3, 5...) = normal
+            return blink_cycle % 2 == 0
+        
+        # Após todas as piscadas, sempre normal
+        return False
     def check_projectile(self):
         # Checa se há algum projétil se colidindo com o jogador
         for projectile in PrjControl.Projectiles:
@@ -120,7 +154,14 @@ class EControl:
         for i, entidades in enumerate(EControl.Entities):
             screen_x = (entidades.posx - camera_x) * zoom
             screen_y = (entidades.posy - camera_y) * zoom
-            entidades.texture.draw(screen_x, screen_y, entidades.anim, zoom)
+            
+            # Verifica se deve aplicar efeito de dano
+            color_filter = None
+            if entidades.should_render_damage_effect():
+                # Filtro vermelho com transparência
+                color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
+            
+            entidades.texture.draw(screen_x, screen_y, entidades.anim, zoom, color_filter)
             # Renderiza texto de vida na cabeça dos mobs
             from core.resources import draw_text
             draw_text(f"{entidades.stats.hp}/{entidades.stats.maxHp}hp", screen_x, screen_y - 20, 10, (255,0,0,255),"Arial",'center')
@@ -151,7 +192,7 @@ class PrjControl:
         for proj in PrjControl.Projectiles:
             screen_x = (proj.posx - camera_x) * zoom
             screen_y = (proj.posy - camera_y) * zoom
-            proj.texture.draw(screen_x, screen_y, proj.anim, zoom)
+            proj.texture.draw(screen_x, screen_y, proj.anim, zoom, None)
 class PControl:
     Players = []
     
@@ -179,8 +220,15 @@ class PControl:
         for i, player in enumerate(PControl.Players):
             screen_x = (player.posx - camera_x) * zoom
             screen_y = (player.posy - camera_y) * zoom
+            
+            # Verifica se deve aplicar efeito de dano
+            color_filter = None
+            if player.should_render_damage_effect():
+                # Filtro vermelho com transparência
+                color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
+            
             # Desenha a textura base do player
-            player.texture.draw(screen_x, screen_y, player.anim, zoom)
+            player.texture.draw(screen_x, screen_y, player.anim, zoom, color_filter)
             from core.resources import draw_text
             draw_text(f"{player.stats.hp}/{player.stats.maxHp}hp", screen_x, screen_y - 20, 10, (255,0,0,255),"Arial",'center')
 
@@ -205,7 +253,8 @@ class PControl:
                             weapon_texture.numFrame = player.texture.numFrame
                     except Exception:
                         pass
-                    weapon_texture.draw(screen_x, screen_y, player.anim - 12, zoom)
+                    # Aplica o mesmo filtro de cor na arma se o player estiver tomando dano
+                    weapon_texture.draw(screen_x, screen_y, player.anim - 12, zoom, color_filter)
     
     def get_main_player():
         """Retorna o player principal (primeiro da lista)"""
@@ -236,4 +285,11 @@ class BrControl:
         for i, breakables in enumerate(BrControl.Breakables):
             screen_x = (breakables.posx - camera_x) * zoom
             screen_y = (breakables.posy - camera_y) * zoom
-            breakables.texture.draw(screen_x, screen_y, breakables.anim, zoom)
+            
+            # Verifica se deve aplicar efeito de dano
+            color_filter = None
+            if breakables.should_render_damage_effect():
+                # Filtro vermelho com transparência
+                color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
+            
+            breakables.texture.draw(screen_x, screen_y, breakables.anim, zoom, color_filter)

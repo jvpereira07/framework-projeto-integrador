@@ -244,6 +244,7 @@ class Weapon(Item):
             p1.posx += mousex * 16
             p1.posy += mousey * 16
             from core.entity import PrjControl
+            p1.damage += self.damage * PControl.Players[id_owner -1].stats.damage
             PrjControl.add(p1)
             self.cooldown = self.max_cooldown
 

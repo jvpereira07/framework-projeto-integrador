@@ -84,7 +84,7 @@ class Sprite:
         ty2 = (y + self.sprite_height) / self.sheet_height
         return tx1, ty1, tx2, ty2
     
-    def draw(self, x, y, anim_row, zoom):
+    def draw(self, x, y, anim_row, zoom, color_filter=None):
         if not self.valid or self.texture_id is None:
             # Desenha um retângulo colorido como fallback
             glDisable(GL_TEXTURE_2D)
@@ -117,6 +117,11 @@ class Sprite:
             sprite_w = self.sprite_width * zoom
             sprite_h = self.sprite_height * zoom
             
+            # Aplica filtro de cor se especificado
+            if color_filter:
+                r, g, b, a = color_filter
+                glColor4f(r, g, b, a)
+            
             glBindTexture(GL_TEXTURE_2D, self.texture_id)
             glBegin(GL_QUADS)
             glTexCoord2f(tx1, ty1); glVertex2f(x, y)
@@ -124,6 +129,10 @@ class Sprite:
             glTexCoord2f(tx2, ty2); glVertex2f(x + sprite_w, y + sprite_h)
             glTexCoord2f(tx1, ty2); glVertex2f(x, y + sprite_h)
             glEnd()
+            
+            # Reset cor para branco
+            if color_filter:
+                glColor4f(1.0, 1.0, 1.0, 1.0)
             
             self.numFrame += atualizacao
             if self.numFrame >= len(self.anim[anim_row]):
