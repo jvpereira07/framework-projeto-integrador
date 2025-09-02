@@ -230,7 +230,12 @@ class Weapon(Item):
     def atack(self, mousex, mousey, playerPosx, playerPosy, anim_row: int = 0):
         if self.cooldown == 0:
             from assets.classes.entities import Projectile
-            p1 = Projectile(0, playerPosx, playerPosy, self.projectile, mousex, mousey)
+            # type_owner e id_owner do player que está atacando
+            from core.entity import PControl
+            type_owner = 'player'
+            # Busca o id do player ativo (assume que o último é o ativo)
+            id_owner = PControl.Players[-1].id if PControl.Players else None
+            p1 = Projectile(0, playerPosx, playerPosy, self.projectile, mousex, mousey, type_owner=type_owner, id_owner=id_owner)
             try:
                 # Define a linha de animação do projétil igual ao ataque da arma
                 p1.anim = int(anim_row)
@@ -238,7 +243,8 @@ class Weapon(Item):
                 pass
             p1.posx += mousex * 16
             p1.posy += mousey * 16
-            EControl.add(p1)
+            from core.entity import PrjControl
+            PrjControl.add(p1)
             self.cooldown = self.max_cooldown
 
     def update_cooldown(self):

@@ -10,7 +10,8 @@ def fun1(entity, map, dirx, diry, EControl):
         entity.time -= 1
 
         # Verifica colisão com entidades (exceto ele mesmo e os já atingidos)
-        for other in EControl.Entities:
+        from core.entity import PrjControl
+        for other in PrjControl.Projectiles:
             if other.id == entity.id or other.id in entity.already_hit:
                 continue  # ignora ele mesmo e quem já foi atingido
 
@@ -24,7 +25,6 @@ def fun1(entity, map, dirx, diry, EControl):
                         entity.kill()
 
                 break
-
     else:
         entity.kill()
 

@@ -71,7 +71,7 @@ def load_behavior_from_db(id, conditions, actions):
 class Mob(Entity):
     def __init__(self, id, x, y, idMob):
         # Consultar o banco de dados para obter as informações do Creature
-        super().__init__(id, x, y, 0, 0, 0)  # Inicializando com 0 para sizex e sizey por enquanto
+        super().__init__(id, x, y, 0, 0, 0,"mob")  # Inicializando com 0 para sizex e sizey por enquanto
         self.mob = self.load(idMob)  # Buscar o Creature com idMob e criar o objeto
         if self.mob:
             self.name = self.mob['Name']
@@ -93,7 +93,7 @@ class Mob(Entity):
             self.sizey = 0
             self.texture = 0
             self.behavior = None
-            
+      
     def load(self, creature_id):
         conn = sqlite3.connect('assets/data/data.db')
         cursor = conn.cursor()
@@ -128,12 +128,17 @@ class Mob(Entity):
             }
         else:
             return None  # Retorna None caso não encontre o Creature no banco
-
+    def run(self, map):
+        super().run(map)
+        self.check_projectile()
+       
 class Projectile(Entity):
-    def __init__(self, id, x, y, idProjectile,dirx,diry):
+    def __init__(self, id, x, y, idProjectile, dirx, diry, type_owner=None, id_owner=None):
         # Inicializa com valores padrão de tamanho e stats
-        super().__init__(id, x, y, 0, 0, 0)  # sizex, sizey e angle default por enquanto
+        super().__init__(id, x, y, 0, 0, 0,"projectile")  # sizex, sizey e angle default por enquanto
         self.projectile_data = self.load(idProjectile)
+        self.type_owner = type_owner
+        self.id_owner = id_owner
 
         if self.projectile_data:
             self.speed = self.projectile_data['speed']
@@ -147,7 +152,6 @@ class Projectile(Entity):
             self.dirx = dirx
             self.diry = diry
             self.type = "projectile"
-            
         else:
             print(f"Não foi possível carregar o Projectile com id {idProjectile}.")
             self.speed = 0
@@ -160,7 +164,6 @@ class Projectile(Entity):
             self.texture = 0
             self.dirx = dirx
             self.diry = diry
-            
 
     def load(self, projectile_id):
         conn = sqlite3.connect('assets/data/data.db')
@@ -188,13 +191,18 @@ class Projectile(Entity):
             return None
     def run(self, map, entities=None):
         if self.behavior:
-            self.behavior(self, map, self.dirx, self.diry,EControl)
+            from core.entity import PrjControl
+            self.behavior(self, map, self.dirx, self.diry, PrjControl)
+
+    def kill(self):
+        from core.entity import PrjControl
+        PrjControl.rem(self.id)
 class Player(Entity):
     def __init__(self, id, file, texture): 
         with open(file, "r", encoding="utf-8") as arquivo:
             playerData = json.load(arquivo)
-        super().__init__(id, playerData['position']['x'], playerData['position']['y'], 32, 32, texture)
-        
+        super().__init__(id, playerData['position']['x'], playerData['position']['y'], 32, 32, texture,"player")
+
         stats = playerData['stats']
         inv = playerData['inv']
         equip = playerData['equiped']
@@ -454,7 +462,7 @@ class Player(Entity):
 
         if hasattr(weapon, 'atack') and callable(weapon.atack):
             # Define a linha de animação da arma pelo direcionamento atual
-            dir_to_row = { 'down': 0, 'right': 1, 'up': 2, 'left': 3 }
+            dir_to_row = { 'right': 0, 'left': 1, 'down': 2, 'up': 3 }
             weapon_row = dir_to_row.get(self.direction, 0)
             weapon.atack(dirx, diry, self.posx, self.posy, anim_row=weapon_row)
         else:
@@ -499,6 +507,7 @@ class Player(Entity):
                 "down": 2,
                 "up": 3
             }.get(self.direction, 4)
+    
     def run(self,map):
         # Detecta transições de ataque para resetar o índice de frame
         
@@ -532,30 +541,28 @@ class Player(Entity):
                     self.texture.numFrame = 0.0
         except Exception:
             pass
-        
+        self.check_projectile()
 
-        
 def save_player(player, filename="saves/player.json"):
     player_dict = player.to_dict()
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(player_dict, f, indent=4, ensure_ascii=False)
 class ItemEntity(Entity):
     def __init__(self, id, x, y, item: Item):
-        super().__init__(id, x, y, 16, 16, item.texture)
+        super().__init__(id, x, y, 16, 16, item.texture,"item")
         self.item = item
-        self.type = "item"
 class Breakable(Entity):
     def __init__(self, id, x, y, sizex, sizey, texture, durability, drop):
-        super().__init__(id, x, y, sizex, sizey, texture)
+        super().__init__(id, x, y, sizex, sizey, texture,"breakable")
         self.durability = durability
-        self.type = "breakable"
         self.drop = drop
     def take_damage(self, amount):
         self.durability -= amount
         if self.durability <= 0:
             self.destroy()
     def destroy(self):
-        EControl.rem(self.id)
+        from core.entity import BrControl
+        BrControl.rem(self.id)
     def check_collision(self, other):
         return (
             self.posx < other.posx + other.sizex and
@@ -565,7 +572,8 @@ class Breakable(Entity):
         )
 
     def run(self, map):
-        for entity in PControl.Players + EControl.Entities:
+        from core.entity import PrjControl, PControl
+        for entity in PControl.Players + PrjControl.Projectiles:
             if self.check_collision(entity):
                 if isinstance(entity, Player):
                     if entity.dashing or entity.attacking:
@@ -576,16 +584,13 @@ class Breakable(Entity):
                         entity.vely = 0
                         entity.decPosx = 0
                         entity.decPosy = 0
-                        
                         # Calcula a menor distância para empurrar o player para fora
                         overlap_left = (entity.posx + entity.sizex) - self.posx
                         overlap_right = (self.posx + self.sizex) - entity.posx
                         overlap_top = (entity.posy + entity.sizey) - self.posy
                         overlap_bottom = (self.posy + self.sizey) - entity.posy
-                        
                         # Encontra a menor sobreposição para determinar direção do empurrão
                         min_overlap = min(overlap_left, overlap_right, overlap_top, overlap_bottom)
-                        
                         if min_overlap == overlap_left:
                             entity.posx = self.posx - entity.sizex
                         elif min_overlap == overlap_right:
@@ -594,7 +599,6 @@ class Breakable(Entity):
                             entity.posy = self.posy - entity.sizey
                         elif min_overlap == overlap_bottom:
                             entity.posy = self.posy + self.sizey
-                            
                 elif hasattr(entity, 'damage'):
                     # Se for outra entidade que causa dano
                     self.take_damage(entity.damage)

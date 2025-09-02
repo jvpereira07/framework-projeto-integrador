@@ -6,7 +6,7 @@ import sys
 import io
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from core.entity import EControl as EntityTick, PControl as PlayerTick
+from core.entity import BrControl, EControl as EntityTick, PControl as PlayerTick, PrjControl as PrjTick
 from core.event import EventControl as EventTick
 from core.event import Event
 from core.map import Map
@@ -14,7 +14,7 @@ from assets.classes.entities import Player, save_player,Breakable
 from core.resources import load_sprite_from_db, draw_text
 from utils.input import Input, control
 from assets.classes.components import Mouse
-
+from core.resources import draw_text
 # Classe para capturar prints de ações
 class ActionCapture:
     def __init__(self):
@@ -68,7 +68,8 @@ class Game:
         self.mouse = Mouse(32, 32, 12,11)
         pygame.mouse.set_visible(False)
         vaso = Breakable(1,100,100,32,32,load_sprite_from_db(29),1,3)
-        EntityTick.add(vaso)
+        from core.entity import BrControl
+        BrControl.add(vaso)
         # Sistema de captura de ações dos botões
         self.action_capture = ActionCapture()
         sys.stdout = self.action_capture
@@ -123,6 +124,8 @@ class Game:
                     EntityTick.run(self.map)
                     PlayerTick.run(self.map)
                     EventTick.run(self.time)
+                    PrjTick.run(self.map)
+                    BrControl.run( self.map)
                     
                     # Controlador do player (apenas durante o jogo)
                     main_player = PlayerTick.get_main_player()
@@ -141,7 +144,8 @@ class Game:
                         self.map.render(0,0,self.zoom,main_player,self.CONFIG["screen"]["width"],self.CONFIG["screen"]["height"])
                         EntityTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
                         PlayerTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
-                
+                        PrjTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
+                        BrControl.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
                 # Reseta completamente a matriz de transformação para a interface
                 glMatrixMode(GL_MODELVIEW)
                 glLoadIdentity()

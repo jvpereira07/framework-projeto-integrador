@@ -1,8 +1,27 @@
+def draw_rect(x, y, width, height, color):
+    """
+    Desenha um retângulo colorido na tela usando OpenGL.
+    color: tupla (R, G, B, A) com valores de 0 a 255
+    """
+    from OpenGL.GL import glColor4f, glBegin, glVertex2f, glEnd, GL_QUADS
+    glDisable(GL_TEXTURE_2D)
+    r, g, b = color[0]/255.0, color[1]/255.0, color[2]/255.0
+    a = color[3]/255.0 if len(color) > 3 else 1.0
+    glColor4f(r, g, b, a)
+    glBegin(GL_QUADS)
+    glVertex2f(x, y)
+    glVertex2f(x + width, y)
+    glVertex2f(x + width, y + height)
+    glVertex2f(x, y + height)
+    glEnd()
+    glColor4f(1, 1, 1, 1)  # Reset cor para branco
+    glEnable(GL_TEXTURE_2D)
 import pygame
 import sqlite3
 import json
 import os
 from OpenGL.GL import *
+
 
 def load_texture(path):
     """Load an image into an OpenGL texture with a couple of path fallbacks."""
