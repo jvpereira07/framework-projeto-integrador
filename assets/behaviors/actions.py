@@ -245,8 +245,8 @@ def aggroPlayer(entity, game_map):
     
     # Sistema de movimento com controle de velocidade
     # Atributos de movimento mais controlados
-    v_max = min(getattr(entity.stats, 'speed', 1.0), 2.0)  # limita velocidade máxima
-    a = min(getattr(entity.stats, 'ace', 0.3), 0.5)        # limita aceleração
+    v_max = getattr(entity.stats, 'speed', 1.0)  # vmax vem de stats.speed
+    a = getattr(entity.stats, 'ace', 0.3)        # aceleração vem de stats.ace
     
     # Inicialização de atributos
     if not hasattr(entity, "decposx"):
@@ -300,7 +300,7 @@ def aggroPlayer(entity, game_map):
             
             # Acelera gradualmente
             current_vel = getattr(entity, vel, 0.0)
-            new_vel = current_vel + (a * direcao * 0.5)  # aceleração mais suave
+            new_vel = current_vel + (a * direcao)  # usa aceleração diretamente de stats.ace
             
             # Limita velocidade ao máximo
             new_vel = max(min(new_vel, v_max), -v_max)

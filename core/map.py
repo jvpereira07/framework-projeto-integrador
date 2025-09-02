@@ -60,6 +60,30 @@ class Map:
         self.col = {row[0]: row[2] for row in cursor.fetchall()}
         conn.close()
     
+    def get_collision_matrix(self):
+        """Retorna uma matriz 2D (lista de listas) com 0=livre e 1=bloqueado.
+        Um tile é considerado bloqueado se QUALQUER camada possuir um tile com
+        colisão (segundo o dicionário self.col).
+        """
+        rows = int(self.map_height)
+        cols = int(self.map_width)
+        matrix = [[0 for _ in range(cols)] for _ in range(rows)]
+        try:
+            total_layers = len(self.layers)
+            for y in range(rows):
+                for x in range(cols):
+                    blocked = 0
+                    for li in range(total_layers):
+                        tile_gid = int(self.matriz[li, y, x])
+                        if self.col.get(tile_gid):
+                            blocked = 1
+                            break
+                    matrix[y][x] = blocked
+        except Exception:
+            # Em caso de erro, retorna tudo caminhável (evita crash)
+            pass
+        return matrix
+    
     def check_col(self, x, y, layer):
         tile_x = x // self.tilewidth
         tile_y = y // self.tileheight

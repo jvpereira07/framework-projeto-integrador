@@ -5,6 +5,12 @@
         
         <!-- Cabeçalho do inventário -->
     <container x="0" y="0" sizex="680" sizey="70" texture="none" border="false">
+     <text x="95%" y="7%" text="HP" font_size="14" color="255,0,0,255" />
+        <!-- Barra vertical (preenche de cima para baixo) -->
+        <!-- Barra horizontal reversa (direita -> esquerda) -->
+    <statsbar x="85%" y="30%" sizex="200" sizey="25"
+              texture_empty="28" texture_full="27" stat="hp"
+              orientation="horizontal" direction="positive" />       
             <button x="right" y="center" sizex="70" sizey="70" texture="18" texture_pressed="18" action="close_inventory" />
         </container>
         
