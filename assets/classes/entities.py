@@ -103,7 +103,7 @@ class Mob(Entity):
             FROM Creature WHERE id = ?
         """, (creature_id,))
         creature_data = cursor.fetchone()
-
+    
         conn.close()
 
         if creature_data:
@@ -566,16 +566,36 @@ class Breakable(Entity):
         )
 
     def run(self, map):
-        for entity in PControl.Players:
+        for entity in PControl.Players + EControl.Entities:
             if self.check_collision(entity):
                 if isinstance(entity, Player):
                     if entity.dashing or entity.attacking:
                         self.take_damage(self.durability)
                     else:
+                        # Para a velocidade atual
                         entity.velx = 0
                         entity.vely = 0
                         entity.decPosx = 0
                         entity.decPosy = 0
+                        
+                        # Calcula a menor distância para empurrar o player para fora
+                        overlap_left = (entity.posx + entity.sizex) - self.posx
+                        overlap_right = (self.posx + self.sizex) - entity.posx
+                        overlap_top = (entity.posy + entity.sizey) - self.posy
+                        overlap_bottom = (self.posy + self.sizey) - entity.posy
+                        
+                        # Encontra a menor sobreposição para determinar direção do empurrão
+                        min_overlap = min(overlap_left, overlap_right, overlap_top, overlap_bottom)
+                        
+                        if min_overlap == overlap_left:
+                            entity.posx = self.posx - entity.sizex
+                        elif min_overlap == overlap_right:
+                            entity.posx = self.posx + self.sizex
+                        elif min_overlap == overlap_top:
+                            entity.posy = self.posy - entity.sizey
+                        elif min_overlap == overlap_bottom:
+                            entity.posy = self.posy + self.sizey
+                            
                 elif hasattr(entity, 'damage'):
                     # Se for outra entidade que causa dano
                     self.take_damage(entity.damage)

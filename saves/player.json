@@ -1,8 +1,8 @@
 {
     "id": 1,
     "position": {
-        "x": 74,
-        "y": 108
+        "x": 287,
+        "y": 676
     },
     "stats": {
         "hp": 100.0,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 730,
+        "quant": 862,
         "inv": [
             {
                 "item_type": "Consumable",
