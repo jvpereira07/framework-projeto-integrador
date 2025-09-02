@@ -215,7 +215,6 @@ class Player(Entity):
         self.last_dash_time = 0
         self.direction = "down"
         self.moving = False
-        self.attacking = False
         self.dashing = False
 
 

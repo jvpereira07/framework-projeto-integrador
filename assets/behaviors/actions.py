@@ -131,6 +131,30 @@ def moveRat(entity, game_map):
     entity.velx = 0.0
     entity.vely = 0.0
 def animRat(entity, map):
+    # Verifica se está atacando e se o tempo de ataque ainda não passou
+    if hasattr(entity, 'attacking') and entity.attacking:
+        import time
+        current_time = time.time()
+        
+        # Se ainda está dentro do tempo de animação de ataque
+        if hasattr(entity, '_attack_end_time') and current_time < entity._attack_end_time:
+            # Animação de ataque baseada na direção
+            if entity.facing == "left":
+                entity.anim = 5  # animação de ataque para esquerda
+            elif entity.facing == "right":
+                entity.anim = 4  # animação de ataque para direita
+            elif entity.facing == "up":
+                entity.anim = 7  # animação de ataque para cima
+            elif entity.facing == "down":
+                entity.anim = 6  # animação de ataque para baixo
+            return
+        else:
+            # Tempo de ataque acabou, volta ao normal
+            entity.attacking = False
+            if hasattr(entity, '_attack_end_time'):
+                delattr(entity, '_attack_end_time')
+    
+    # Animação normal de movimento/idle
     if entity.facing == "left":
         entity.anim = 1
     elif entity.facing == "right":
@@ -341,10 +365,124 @@ def aggroPlayer(entity, game_map):
         entity.velx *= 0.9
         entity.vely *= 0.9
 
+def biteAttack(entity, game_map):
+    """Lança um projétil de id 3 com dano baseado no ataque do mob"""
+    
+    # Importa classes necessárias
+    try:
+        from core.entity import PControl, EControl
+        from assets.classes.entities import Projectile
+    except ImportError:
+        try:
+            import main
+            PControl = main.PControl
+            EControl = main.EControl
+            from assets.classes.entities import Projectile
+        except:
+            return  # Se não conseguir importar, sai da função
+    
+    # Verifica se entity tem os atributos necessários
+    if not hasattr(entity, 'posx') or not hasattr(entity, 'posy'):
+        return
+    
+    # Verifica se há players para atacar
+    if not hasattr(PControl, 'Players') or not PControl.Players:
+        return
+    
+    # Encontra o player mais próximo para mirar
+    closest_player = None
+    min_distance = float('inf')
+    
+    entity_center_x = entity.posx + getattr(entity, 'sizex', 32) / 2
+    entity_center_y = entity.posy + getattr(entity, 'sizey', 32) / 2
+    
+    for player in PControl.Players:
+        if not hasattr(player, 'posx') or not hasattr(player, 'posy'):
+            continue
+            
+        player_center_x = player.posx + getattr(player, 'sizex', 32) / 2
+        player_center_y = player.posy + getattr(player, 'sizey', 32) / 2
+        
+        distance = math.sqrt((entity_center_x - player_center_x)**2 + 
+                           (entity_center_y - player_center_y)**2)
+        
+        if distance < min_distance:
+            min_distance = distance
+            closest_player = player
+    
+    # Se não encontrou player ou está muito longe (mais de 200 pixels), não ataca
+    if not closest_player or min_distance > 200:
+        return
+    
+    # Calcula direção para o player
+    target_x = closest_player.posx + getattr(closest_player, 'sizex', 32) / 2
+    target_y = closest_player.posy + getattr(closest_player, 'sizey', 32) / 2
+    
+    # Diferença de posição (direção do projétil)
+    dx = target_x - entity_center_x
+    dy = target_y - entity_center_y
+    
+    # Normaliza a direção
+    distance = math.sqrt(dx*dx + dy*dy)
+    if distance > 0:
+        dir_x = dx / distance
+        dir_y = dy / distance
+    else:
+        dir_x = 1  # direção padrão
+        dir_y = 0
+    
+    # Cria o projétil de id 3
+    try:
+        # Gera um ID único para o projétil
+        import time
+        
+        
+        # Cria o projétil
+        projectile = Projectile(
+            id=0,
+            x=entity_center_x,
+            y=entity_center_y,
+            idProjectile=3,  # ID do projétil no banco de dados
+            dirx=dir_x,
+            diry=dir_y
+        )
+        
+        # Calcula o dano combinado (ataque do mob * dano base do projétil)
+        mob_attack = getattr(entity.stats, 'damage', 1) if hasattr(entity, 'stats') else 1
+        base_projectile_damage = getattr(projectile, 'damage', 1)
+        
+        # Define o dano final do projétil
+        projectile.damage = mob_attack * base_projectile_damage
+        
+        # Adiciona o projétil ao controle de entidades
+        
+        EControl.add(projectile)
+        
+        # Ativa animação de ataque
+        entity.attacking = True
+        entity.texture.numFrame = 0
+        # Define duração da animação de ataque (tempo de um ciclo)
+        # Armazena o tempo atual + duração da animação
+        import time
+        animation_duration = 0.5  # 500ms para um ciclo de animação de ataque
+        entity._attack_end_time = time.time() + animation_duration
+        
+        # Atualiza facing do mob baseado na direção do ataque
+        if abs(dx) > abs(dy):
+            entity.facing = "right" if dx > 0 else "left"
+        else:
+            entity.facing = "down" if dy > 0 else "up"
+            
+    except Exception as e:
+        # Em caso de erro, apenas retorna sem crashar
+        print(f"Erro ao criar projétil biteAttack: {e}")
+        return
+
 actions = {
     action1.name : action1.action,
     "moveRat": moveRat,
     "animBombastic": animBombastic,
     "animRat": animRat,
-    "aggroPlayer": aggroPlayer
+    "aggroPlayer": aggroPlayer,
+    "biteAttack": biteAttack
 }

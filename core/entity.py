@@ -12,6 +12,7 @@ class Entity:
         self.anim = 0
         self.texture = texture
         self.facing = "left"
+        self.attacking = False
     def move(self, x, y, map):
         hitbox_width = self.sizex 
         hitbox_height = self.sizey 
