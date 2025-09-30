@@ -47,7 +47,7 @@ async function main() {
 
     // Constrói os caminhos para os assets a partir da raiz do projeto
     const mapPath = path.join(projectRoot, 'assets', 'data', 'map.json');
-    const dbPath = path.join(projectRoot, 'data-server.db');
+    const dbPath = path.join(projectRoot, 'assets', 'data', 'data.db');
 
     // Carrega o mapa e os dados de colisão
     map = await Map.create(mapPath, dbPath);
