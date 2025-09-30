@@ -1,0 +1,207 @@
+# Documentação do Framework Projeto Integrador
+
+## 1. Visão Geral da Arquitetura
+
+O projeto utiliza uma arquitetura cliente-servidor, onde:
+- Cliente (client.py): Interface gráfica e controles do jogador usando PyGame e OpenGL
+- Servidor (server/): Backend Node.js com Socket.IO para comunicação em tempo real
+
+### 1.1 Tecnologias Principais
+
+Cliente (Python):
+- PyGame: Motor gráfico e gerenciamento de eventos
+- OpenGL: Renderização 2D
+- Socket.IO: Comunicação em tempo real com o servidor
+- PyYAML: Carregamento de configurações
+
+Servidor (Node.js):
+- Express: Framework web para APIs REST
+- Socket.IO: Comunicação em tempo real
+- JWT: Autenticação de usuários
+- SQLite: Banco de dados
+
+## 2. Cliente (client.py)
+
+### 2.1 Estrutura Principal
+
+O cliente é dividido em várias seções:
+
+1. Configuração da Rede:
+   - Socket.IO para comunicação em tempo real
+   - Gerenciamento de estado do jogo
+   - Sistema de eventos
+
+2. Interface Gráfica:
+   - Renderização OpenGL
+   - Sistema de câmera seguindo o jogador
+   - Interface de usuário (HUD)
+   - Sistema de animação de sprites
+
+3. Sistema de Input:
+   - Captura de teclado e mouse
+   - Envio de inputs para o servidor
+   - Gerenciamento de estados de teclas
+
+4. Gerenciamento de Estado:
+   - Sincronização com o servidor
+   - Cache de sprites
+   - Estado do jogador
+
+### 2.2 Fluxo de Execução
+
+1. Conexão:
+   - Solicita IP do servidor
+   - Sistema de autenticação (login/registro)
+   - Seleção/criação de personagem
+
+2. Loop Principal:
+   - Atualização de inputs
+   - Recebimento de estado do servidor
+   - Renderização do mundo
+   - Atualização da interface
+
+3. Desconexão:
+   - Salvamento de estado
+   - Limpeza de recursos
+
+## 3. Servidor (server/)
+
+### 3.1 Estrutura de Arquivos
+
+- server.js: Arquivo principal do servidor
+- auth_routes.js: Rotas de autenticação
+- database.js: Configuração do banco de dados
+- models/: Modelos de dados
+
+### 3.2 Componentes Principais
+
+1. Sistema de Autenticação:
+   - Login e registro de usuários
+   - Geração e validação de tokens JWT
+   - Middleware de autenticação Socket.IO
+
+2. Game Loop:
+   - Taxa de atualização fixa (60 FPS)
+   - Processamento de inputs
+   - Física e colisões
+   - Broadcast de estado
+
+3. Gerenciamento de Entidades:
+   - Players
+   - NPCs/Mobs
+   - Sistema de combate básico
+
+### 3.3 Sistema de Persistência:
+
+1. Banco de Dados:
+   - Armazenamento de contas
+   - Estados dos personagens
+   - Configurações do mundo
+
+2. Sistema de Save:
+   - Salvamento automático
+   - Persistência de posição
+   - Estado do jogador
+
+## 4. Protocolo de Comunicação
+
+### 4.1 Eventos Socket.IO
+
+Do Cliente para o Servidor:
+- player_input: Envio de inputs do jogador
+- disconnect: Desconexão do cliente
+
+Do Servidor para o Cliente:
+- assign_id: Atribuição de ID ao jogador
+- game_state: Atualização do estado do jogo
+
+### 4.2 APIs REST
+
+Autenticação:
+- POST /login: Login de usuário
+- POST /register: Registro de novo usuário
+- POST /characters: Criação de personagem
+- PUT /player/state: Atualização de estado
+
+## 5. Sistema de Arquivos
+
+### 5.1 Assets
+
+- images/: Sprites e texturas
+- data/: Arquivos de configuração
+- map.json: Definição do mapa do jogo
+
+### 5.2 Configuração
+
+- config.yaml: Configurações do cliente
+- saves/: Arquivos de save
+- database.js: Configuração do banco
+
+## 6. Guia de Desenvolvimento
+
+### 6.1 Configuração do Ambiente
+
+1. Requisitos:
+   - Python 3.x
+   - Node.js
+   - Dependências Python (requirements.txt)
+   - Dependências Node (package.json)
+
+2. Instalação:
+   - pip install -r requirements.txt
+   - npm install (na pasta server)
+
+### 6.2 Executando o Projeto
+
+1. Servidor:
+   - cd server
+   - node server.js
+
+2. Cliente:
+   - python client.py
+   - Inserir IP do servidor quando solicitado
+
+## 7. Considerações de Segurança
+
+1. Autenticação:
+   - Tokens JWT para sessões
+   - Validação de propriedade de personagens
+   - Proteção contra acesso não autorizado
+
+2. Validação:
+   - Sanitização de inputs
+   - Verificação de estados
+   - Proteção contra cheating básico
+
+## 8. Limitações Conhecidas
+
+1. Performance:
+   - Renderização pode ser pesada em máquinas mais fracas
+   - Socket.IO pode ter latência em conexões ruins
+
+2. Segurança:
+   - Sistema básico anti-cheat
+   - Validação de movimento simples
+
+## 9. Próximos Passos Sugeridos
+
+1. Melhorias:
+   - Otimização de renderização
+   - Sistema de combate mais robusto
+   - Interface mais amigável
+
+2. Novas Features:
+   - Sistema de chat
+   - Sistema de missões
+
+## 10. Suporte e Manutenção
+
+1. Logs:
+   - Cliente: Console do Python
+   - Servidor: Console Node.js
+   - Erros salvos em logs
+
+2. Backup:
+   - Banco de dados
+   - Estados dos jogadores
+   - Configurações

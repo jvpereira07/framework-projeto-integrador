@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Node.js (dentro da pasta server)
+/server/node_modules
+npm-debug.log*
+npm-error.log*
+
+# VSCode
+.vscode/

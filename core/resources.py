@@ -162,6 +162,7 @@ def load_sprite_from_db(id_sprite):
         print(f"Erro inesperado ao carregar sprite {id_sprite}: {e}")
         return None
 
+
 # ==========================
 # Texto: desenhar com OpenGL
 # ==========================
