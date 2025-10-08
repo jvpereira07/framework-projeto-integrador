@@ -41,13 +41,59 @@ class Inventory:
                 self._update_slot(i)  # Atualiza slot específico
                 break
 
-    def drop(self, slot):
+    def drop(self, slot, player=None):
+        """
+        Remove um item do inventário e, se player for fornecido, 
+        spawna um ItemEntity ao lado do player
+        """
         if 0 <= slot < len(self.itens) and self.itens[slot] is not None:
             dropped = self.itens[slot]
             self.itens[slot] = None
             self.quant -= 1
             self._update_slot(slot)  # Atualiza slot específico
+            
+            # Se um player foi fornecido, spawna o item no mundo
+            if player is not None:
+                self._spawn_item_entity(dropped, player)
+            
             return dropped
+        return None
+    
+    def _spawn_item_entity(self, item, player):
+        """Spawna um ItemEntity ao lado do player"""
+        try:
+            from assets.classes.entities import ItemEntity
+            from core.entity import ItControl
+            
+            # Calcula posição ao lado do player (à direita)
+            offset_x = 40  # 40 pixels à direita
+            offset_y = 0
+            
+            # Ajusta baseado na direção que o player está olhando
+            if hasattr(player, 'facing'):
+                if player.facing == "right":
+                    offset_x = player.sizex + 10
+                    offset_y = 0
+                elif player.facing == "left":
+                    offset_x = -26  # sizex do item (16) + margem (10)
+                    offset_y = 0
+                elif player.facing == "down":
+                    offset_x = 0
+                    offset_y = player.sizey + 10
+                elif player.facing == "up":
+                    offset_x = 0
+                    offset_y = -26
+            
+            # Cria o ItemEntity na posição calculada
+            item_x = player.posx + offset_x
+            item_y = player.posy + offset_y
+            
+            item_entity = ItemEntity(0, item_x, item_y, item)
+            ItControl.add(item_entity)
+            
+            print(f"Item '{item.name}' dropado ao lado do player em ({item_x}, {item_y})")
+        except Exception as e:
+            print(f"Erro ao spawnar ItemEntity: {e}")
     def __str__(self):
         return f"Inventário: {self.quant}/{len(self.itens)} ocupados"
 

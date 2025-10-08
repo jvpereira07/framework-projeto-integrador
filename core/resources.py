@@ -3,10 +3,18 @@ def draw_rect(x, y, width, height, color):
     Desenha um retângulo colorido na tela usando OpenGL.
     color: tupla (R, G, B, A) com valores de 0 a 255
     """
-    from OpenGL.GL import glColor4f, glBegin, glVertex2f, glEnd, GL_QUADS
+    from OpenGL.GL import (
+        glColor4f, glBegin, glVertex2f, glEnd, glDisable, glEnable,
+        GL_QUADS, GL_TEXTURE_2D, glBlendFunc, glGetBooleanv, GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+    )
+    # Salva estado de blending (simples) e garante alpha habilitado
+    was_blend = glGetBooleanv(GL_BLEND)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
     glDisable(GL_TEXTURE_2D)
     r, g, b = color[0]/255.0, color[1]/255.0, color[2]/255.0
-    a = color[3]/255.0 if len(color) > 3 else 1.0
+    a = color[3]/255.0 if len(color) > 3 else 0.5
     glColor4f(r, g, b, a)
     glBegin(GL_QUADS)
     glVertex2f(x, y)
@@ -16,6 +24,10 @@ def draw_rect(x, y, width, height, color):
     glEnd()
     glColor4f(1, 1, 1, 1)  # Reset cor para branco
     glEnable(GL_TEXTURE_2D)
+    # Restaura blending básico (mantemos habilitado por padrão no projeto)
+    if not was_blend:
+        from OpenGL.GL import glDisable
+        glDisable(GL_BLEND)
 import pygame
 import sqlite3
 import json

@@ -1423,7 +1423,7 @@ def register_default_actions():
                 
             # Realiza o drop
             slot_id = current_interface._selected_slot_id
-            dropped_item = player_inventory.drop(slot_id)
+            dropped_item = player_inventory.drop(slot_id, player)
             
             if dropped_item:
                 print(f"✓ Item {dropped_item.name} foi dropado do slot {slot_id}")
@@ -1478,8 +1478,8 @@ def register_default_actions():
             # Realiza o equipamento
             slot_id = current_interface._selected_slot_id
             
-            # Remove do inventário
-            removed_item = player.inv.drop(slot_id)
+            # Remove do inventário (sem spawnar no mundo pois vai equipar)
+            removed_item = player.inv.drop(slot_id, player=None)
             if not removed_item:
                 print("⚠ Não foi possível remover item do inventário")
                 return
@@ -1609,8 +1609,9 @@ def register_default_actions():
                         player.inv._update_all_slots()
                     else:
                         # Remove item do inventário se quantidade chegou a 0
+                        # Não spawna no mundo pois foi consumido
                         slot_id = current_interface._selected_slot_id
-                        player.inv.drop(slot_id)
+                        player.inv.drop(slot_id, player=None)
                         print(f"✓ {item.name} foi consumido completamente")
                         # Limpa seleção atual
                         current_interface.set_selected_item(None)

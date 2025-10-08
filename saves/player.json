@@ -1,17 +1,17 @@
 {
     "id": 1,
     "position": {
-        "x": 103,
-        "y": 352
+        "x": 112,
+        "y": 206
     },
     "stats": {
-        "hp": 96.0,
+        "hp": 85.0,
         "maxHp": 150,
         "regenHp": 0.5,
         "mana": 100,
         "maxMana": 100,
         "regenMana": 0.3,
-        "stamina": 60,
+        "stamina": 20,
         "maxStamina": 80,
         "regenStamina": 0.4,
         "damage": 0.5,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 1318,
+        "quant": 2118,
         "inv": [
             {
                 "item_type": "Consumable",
@@ -38,16 +38,19 @@
                 "mana": 100.0,
                 "stamina": 0.0,
                 "effect": "",
-                "quant": 41
+                "quant": 68
             },
             {
-                "item_type": "KeyItem",
-                "name": "Pintão",
-                "texture": 7,
-                "special": "",
-                "description": "Item de teste",
-                "id": 2,
-                "quant": 1
+                "item_type": "Consumable",
+                "name": "Bebida energética",
+                "texture": 38,
+                "description": "Regenera a stamina do usuário \"Vai conhecer meu treme terra\"",
+                "id": 4,
+                "heal": 0,
+                "mana": 0,
+                "stamina": 50.0,
+                "effect": "0",
+                "quant": 508
             },
             {
                 "item_type": "Consumable",
@@ -56,10 +59,10 @@
                 "description": "Restaura 100 pontos de vida",
                 "id": 1,
                 "heal": 100.0,
-                "mana": 0.0,
-                "stamina": 0.0,
+                "mana": 0,
+                "stamina": 0,
                 "effect": "",
-                "quant": 9
+                "quant": 4
             }
         ]
     },

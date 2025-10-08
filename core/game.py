@@ -15,6 +15,7 @@ from core.resources import load_sprite_from_db, draw_text
 from utils.input import Input, control
 from assets.classes.components import Mouse
 from core.resources import draw_text
+from core.entity import ItControl
 # Classe para capturar prints de ações
 class ActionCapture:
     def __init__(self):
@@ -65,11 +66,23 @@ class Game:
         self.map = Map('assets/data/map.json','assets/images/layers/basic.png')
         # Instancia o player no novo PlayerController
         PlayerTick.add(Player(1,"saves/player.json",load_sprite_from_db(8)))
+        # Configura exibição de hitboxes a partir do config
+        try:
+            from core.entity import set_show_hitboxes
+            show = bool(self.CONFIG.get('debug', {}).get('showHitboxes', False))
+            set_show_hitboxes(show)
+        except Exception:
+            pass
         self.mouse = Mouse(32, 32, 12,11)
         pygame.mouse.set_visible(False)
         vaso = Breakable(1,100,100,32,32,load_sprite_from_db(29),1,3)
+        vaso2 = Breakable(2,300,100,32,32,load_sprite_from_db(29),1,4)
         from core.entity import BrControl
         BrControl.add(vaso)
+        BrControl.add(vaso2)
+        ##event = Event(lambda: True,"spawn_rat","spawn",{'num_mob':1,'id_mob':5,'x':150,'y':150},5,True)
+        ##EventTick.add(event)
+        
         # Sistema de captura de ações dos botões
         self.action_capture = ActionCapture()
         sys.stdout = self.action_capture
@@ -89,8 +102,18 @@ class Game:
         self.game_state = "playing"  # menu, playing, inventory
         self.interface_manager.show_interface("hud")
         from assets.classes.entities import Mob
-        m = Mob(1,0,0,5)
+        m = Mob(1,100,100,4)
         EntityTick.add(m)
+        from assets.classes.itens import get_item_from_db
+        item = get_item_from_db(1)
+        from assets.classes.entities import ItemEntity
+        it = ItemEntity(1,200,200,item)
+        ItControl.add(it)
+        
+        def condition_spawn_rat():
+            # Condição simples: sempre retorna True
+            return True
+        
         # Conecta o inventário do player à interface
         self.interface_manager.connect_inventory_to_interface(PlayerTick.get_main_player().inv)
 
@@ -123,9 +146,10 @@ class Game:
                 if self.game_state == "playing":
                     EntityTick.run(self.map)
                     PlayerTick.run(self.map)
-                    EventTick.run(self.time)
+                    EventTick.run(time.time())
                     PrjTick.run(self.map)
                     BrControl.run( self.map)
+                    ItControl.run(self.map)
                     
                     # Controlador do player (apenas durante o jogo)
                     main_player = PlayerTick.get_main_player()
@@ -146,6 +170,7 @@ class Game:
                         PlayerTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
                         PrjTick.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
                         BrControl.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
+                        ItControl.draw(main_player.posx- (self.CONFIG["screen"]["width"]/(2*self.zoom)),main_player.posy- (self.CONFIG["screen"]["height"]/(2*self.zoom)),self.zoom)
                 # Reseta completamente a matriz de transformação para a interface
                 glMatrixMode(GL_MODELVIEW)
                 glLoadIdentity()

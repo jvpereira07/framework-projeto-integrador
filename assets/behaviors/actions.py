@@ -1,11 +1,163 @@
 from core.condition_nodes import Action
 import random
 import math
+import heapq
 
 # Dicionário para armazenar estados de aggro
 _aggro_states = {}
 
 _move_states = {}
+
+def _check_forbidden_columns(entity, new_posx, new_posy, game_map):
+    """
+    Verifica se a nova posição da entidade resultaria em col=2 ou col=3.
+    Checa toda a largura e altura da entidade pixel por pixel.
+    
+    Returns:
+        True se a posição é PROIBIDA (col=2 ou col=3)
+        False se a posição é permitida
+    """
+    # Verifica toda a área da entidade (não apenas o pé)
+    for dy in range(entity.sizey):
+        for dx in range(entity.sizex):
+            # Checa layer 0
+            col_type = game_map.check_col(new_posx + dx, new_posy + dy, 0)
+            if col_type == 2 or col_type == 3:
+                return True
+            
+            # Checa layer 1
+            col_type = game_map.check_col(new_posx + dx, new_posy + dy, 1)
+            if col_type == 2 or col_type == 3:
+                return True
+    
+    return False
+
+def _is_walkable(entity, tile_x, tile_y, game_map):
+    """
+    Verifica se um tile é caminhável para a entidade.
+    Considera col=1 (paredes), col=2 e col=3 como bloqueados.
+    
+    Args:
+        entity: A entidade que vai andar
+        tile_x, tile_y: Coordenadas do tile (não pixels)
+        game_map: O mapa do jogo
+    
+    Returns:
+        True se o tile é caminhável, False caso contrário
+    """
+    tile_size = 32
+    pixel_x = tile_x * tile_size
+    pixel_y = tile_y * tile_size
+    
+    # Verifica se está dentro dos limites do mapa
+    if tile_x < 0 or tile_y < 0:
+        return False
+    if tile_x >= game_map.map_width or tile_y >= game_map.map_height:
+        return False
+    
+    # Verifica toda a área que a entidade ocuparia neste tile
+    for dy in range(entity.sizey):
+        for dx in range(entity.sizex):
+            # Checa layer 0
+            col_type = game_map.check_col(pixel_x + dx, pixel_y + dy, 0)
+            if col_type == 1 or col_type == 2 or col_type == 3:
+                return False
+            
+            # Checa layer 1
+            col_type = game_map.check_col(pixel_x + dx, pixel_y + dy, 1)
+            if col_type == 1 or col_type == 2 or col_type == 3:
+                return False
+    
+    return True
+
+def _astar_pathfinding(entity, start_pos, goal_pos, game_map):
+    """
+    Implementa o algoritmo A* para encontrar caminho entre dois pontos.
+    
+    Args:
+        entity: A entidade que precisa do caminho
+        start_pos: Tupla (x, y) em pixels da posição inicial
+        goal_pos: Tupla (x, y) em pixels da posição final
+        game_map: O mapa do jogo
+    
+    Returns:
+        Lista de tuplas [(x, y), ...] em pixels, ou None se não houver caminho
+    """
+    tile_size = 32
+    
+    # Converte posições de pixels para tiles
+    start_tile = (start_pos[0] // tile_size, start_pos[1] // tile_size)
+    goal_tile = (goal_pos[0] // tile_size, goal_pos[1] // tile_size)
+    
+    # Se o objetivo não é caminhável, retorna None
+    if not _is_walkable(entity, goal_tile[0], goal_tile[1], game_map):
+        return None
+    
+    # Função heurística (distância Manhattan)
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    
+    # Conjunto de tiles já visitados
+    closed_set = set()
+    
+    # Heap de prioridade: (f_score, counter, tile, path)
+    # counter é usado para desempate quando f_scores são iguais
+    counter = 0
+    open_heap = []
+    heapq.heappush(open_heap, (0, counter, start_tile, [start_tile]))
+    
+    # Dicionário de melhores scores conhecidos
+    g_score = {start_tile: 0}
+    
+    # Direções: direita, esquerda, baixo, cima
+    directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+    
+    # Limite de iterações para evitar loops infinitos
+    max_iterations = 500
+    iterations = 0
+    
+    while open_heap and iterations < max_iterations:
+        iterations += 1
+        
+        # Pega o tile com menor f_score
+        current_f, _, current_tile, path = heapq.heappop(open_heap)
+        
+        # Se chegou ao objetivo, retorna o caminho em pixels
+        if current_tile == goal_tile:
+            # Converte tiles de volta para pixels (centro do tile)
+            pixel_path = []
+            for tile in path:
+                pixel_x = tile[0] * tile_size + tile_size // 2 - entity.sizex // 2
+                pixel_y = tile[1] * tile_size + tile_size // 2 - entity.sizey // 2
+                pixel_path.append((pixel_x, pixel_y))
+            return pixel_path
+        
+        # Marca como visitado
+        if current_tile in closed_set:
+            continue
+        closed_set.add(current_tile)
+        
+        # Explora vizinhos
+        for dx, dy in directions:
+            neighbor = (current_tile[0] + dx, current_tile[1] + dy)
+            
+            # Verifica se o vizinho é caminhável
+            if not _is_walkable(entity, neighbor[0], neighbor[1], game_map):
+                continue
+            
+            # Calcula novo g_score
+            tentative_g = g_score[current_tile] + 1
+            
+            # Se encontrou um caminho melhor para este vizinho
+            if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                g_score[neighbor] = tentative_g
+                f_score = tentative_g + heuristic(neighbor, goal_tile)
+                counter += 1
+                new_path = path + [neighbor]
+                heapq.heappush(open_heap, (f_score, counter, neighbor, new_path))
+    
+    # Não encontrou caminho
+    return None
 
 def a1fun(entity, map_ref=None):
     if entity.stats.hp <= 0:
@@ -54,12 +206,99 @@ def a1fun(entity, map_ref=None):
     
 action1 = Action("andar",a1fun )
 
+def move_bombastic(entity, game_map):
+    """
+    Movimento circular do boss que alterna direção a cada 2 rotações completas.
+    O boss se mantém em uma região fixa, girando em círculos.
+    """
+    import math
+    
+    # Inicializa estado do movimento circular na primeira execução
+    if not hasattr(entity, 'bombastic_initialized'):
+        entity.bombastic_initialized = True
+        # Centro fixo do círculo (posição inicial do boss)
+        entity.circle_center_x = entity.posx
+        entity.circle_center_y = entity.posy
+        # Raio do círculo
+        entity.circle_radius = 80.0
+        # Ângulo atual (em radianos)
+        entity.circle_angle = 0.0
+        # Velocidade angular (radianos por frame)
+        entity.angular_speed = 0.04  # ~2.3 graus por frame
+        # Direção da rotação (1 = horário, -1 = anti-horário)
+        entity.rotation_direction = 1
+        # Contador de rotações completas
+        entity.rotation_count = 0
+        # Ângulo da última rotação (para detectar quando completa 360°)
+        entity.last_rotation_checkpoint = 0.0
+    
+    # Atualiza o ângulo
+    entity.circle_angle += entity.angular_speed * entity.rotation_direction
+    
+    # Normaliza o ângulo para ficar entre 0 e 2π
+    if entity.circle_angle >= 2 * math.pi:
+        entity.circle_angle -= 2 * math.pi
+        entity.rotation_count += 1
+        
+        # A cada 2 rotações completas, inverte a direção
+        if entity.rotation_count >= 2:
+            entity.rotation_direction *= -1  # Inverte direção
+            entity.rotation_count = 0
+            
+    elif entity.circle_angle < 0:
+        entity.circle_angle += 2 * math.pi
+        entity.rotation_count += 1
+        
+        # A cada 2 rotações completas, inverte a direção
+        if entity.rotation_count >= 2:
+            entity.rotation_direction *= -1  # Inverte direção
+            entity.rotation_count = 0
+    
+    # Calcula nova posição no círculo
+    target_x = entity.circle_center_x + math.cos(entity.circle_angle) * entity.circle_radius
+    target_y = entity.circle_center_y + math.sin(entity.circle_angle) * entity.circle_radius
+    
+    # Movimento suave em direção ao ponto no círculo
+    dx = target_x - entity.posx
+    dy = target_y - entity.posy
+    
+    # Velocidade de movimento
+    move_speed = 2.0
+    
+    # Normaliza e aplica velocidade
+    distance = math.sqrt(dx*dx + dy*dy)
+    if distance > 0.5:  # Se está longe do ponto alvo
+        move_x = (dx / distance) * move_speed
+        move_y = (dy / distance) * move_speed
+        
+        # Tenta mover
+        old_posx = entity.posx
+        old_posy = entity.posy
+        
+        # Move em X
+        if abs(move_x) > 0.5:
+            step_x = int(move_x)
+            if step_x != 0:
+                entity.move(step_x, 0, game_map)
+        
+        # Move em Y
+        if abs(move_y) > 0.5:
+            step_y = int(move_y)
+            if step_y != 0:
+                entity.move(0, step_y, game_map)
+        
+        # Atualiza facing baseado na direção do movimento
+        if abs(dx) > abs(dy):
+            entity.facing = "right" if dx > 0 else "left"
+        else:
+            entity.facing = "down" if dy > 0 else "up"
+
 def animBombastic(entity,map):
     if entity.facing == "left":
-        entity.anim = 1
+        entity.anim = 2
         
     elif entity.facing == "right":
-        entity.anim = 0
+        entity.anim = 1
 def moveRat(entity, game_map):
     global _move_states
     eid = id(entity)
@@ -68,8 +307,26 @@ def moveRat(entity, game_map):
     if eid not in _move_states or (
         abs(_move_states[eid]['dx']) < 0.5 and abs(_move_states[eid]['dy']) < 0.5
     ):
+        # Filtra direções que não levam para col=2 ou col=3
         direcoes = [(32, 0), (-32, 0), (0, 32), (0, -32)]
-        dx, dy = random.choice(direcoes)
+        direcoes_validas = []
+        
+        for dx, dy in direcoes:
+            # Simula a posição final do movimento
+            test_posx = entity.posx + dx
+            test_posy = entity.posy + dy
+            
+            # Verifica se essa direção levaria a col=2 ou col=3
+            if not _check_forbidden_columns(entity, test_posx, test_posy, game_map):
+                direcoes_validas.append((dx, dy))
+        
+        # Se não há direções válidas, fica parado
+        if not direcoes_validas:
+            entity.velx = 0.0
+            entity.vely = 0.0
+            return
+        
+        dx, dy = random.choice(direcoes_validas)
         _move_states[eid] = {'dx': float(dx), 'dy': float(dy)}
         entity.velx = 0.0
         entity.vely = 0.0
@@ -90,11 +347,9 @@ def moveRat(entity, game_map):
     def aplicar_movimento(eixo):
         if eixo == 'x':
             vel, decpos, delta = 'velx', 'decposx', 'dx'
-            move_func = lambda passo: entity.move(passo, 0, game_map)
             facing_pos, facing_neg = "right", "left"
         else:
             vel, decpos, delta = 'vely', 'decposy', 'dy'
-            move_func = lambda passo: entity.move(0, passo, game_map)
             facing_pos, facing_neg = "down", "up"
 
         if abs(state[delta]) > 0.5:
@@ -115,9 +370,51 @@ def moveRat(entity, game_map):
             setattr(entity, decpos, getattr(entity, decpos) - inteiro)
 
             if inteiro != 0:
-                move_func(inteiro)
-                state[delta] -= inteiro
-                entity.facing = facing_pos if inteiro > 0 else facing_neg
+                # Salva posição anterior
+                old_posx = entity.posx
+                old_posy = entity.posy
+                
+                # Calcula nova posição
+                if eixo == 'x':
+                    new_posx = entity.posx + inteiro
+                    new_posy = entity.posy
+                else:
+                    new_posx = entity.posx
+                    new_posy = entity.posy + inteiro
+                
+                # VERIFICA SE A NOVA POSIÇÃO RESULTARIA EM COL=2 OU COL=3
+                if _check_forbidden_columns(entity, new_posx, new_posy, game_map):
+                    # Posição proibida! Cancela movimento neste eixo
+                    if eixo == 'x':
+                        state['dx'] = 0.0
+                        entity.velx = 0.0
+                    else:
+                        state['dy'] = 0.0
+                        entity.vely = 0.0
+                    return False
+                
+                # Tenta fazer o movimento (verifica col=1 e breakables)
+                if eixo == 'x':
+                    entity.move(inteiro, 0, game_map)
+                else:
+                    entity.move(0, inteiro, game_map)
+                
+                # Verifica se o movimento foi bem-sucedido
+                if entity.posx != old_posx or entity.posy != old_posy:
+                    # Movimento bem-sucedido
+                    state[delta] -= inteiro
+                    entity.facing = facing_pos if inteiro > 0 else facing_neg
+                    return True
+                else:
+                    # Movimento bloqueado por colisão normal (parede ou breakable)
+                    if eixo == 'x':
+                        state['dx'] = 0.0
+                        entity.velx = 0.0
+                    else:
+                        state['dy'] = 0.0
+                        entity.vely = 0.0
+                    return False
+                    
             return True
         return False
 
@@ -125,7 +422,6 @@ def moveRat(entity, game_map):
         return
     if aplicar_movimento('y'):
         return
-
 
     # Se chegou no fim do deslocamento, zera velocidade
     entity.velx = 0.0
@@ -165,7 +461,7 @@ def animRat(entity, map):
         entity.anim = 2
 
 def aggroPlayer(entity, game_map):
-    """Salva aggro no player mais próximo e persegue-o"""
+    """Salva aggro no player mais próximo e persegue-o com pathfinding A*"""
     global _aggro_states
     
     # Importa PControl aqui para evitar import circular
@@ -187,7 +483,14 @@ def aggroPlayer(entity, game_map):
     
     # Inicializa estado se não existir
     if eid not in _aggro_states:
-        _aggro_states[eid] = {'target': None, 'last_target_pos': None}
+        _aggro_states[eid] = {
+            'target': None, 
+            'last_target_pos': None,
+            'path': None,  # Caminho calculado pelo A*
+            'path_index': 0,  # Índice atual no caminho
+            'stuck_counter': 0,  # Contador de frames travado
+            'last_pos': (entity.posx, entity.posy)  # Última posição conhecida
+        }
     
     state = _aggro_states[eid]
     
@@ -224,6 +527,21 @@ def aggroPlayer(entity, game_map):
     
     # Salva o target
     state['target'] = closest_player
+    
+    # Verifica se a entidade está travada (não se moveu nos últimos frames)
+    current_pos = (entity.posx, entity.posy)
+    if current_pos == state['last_pos']:
+        state['stuck_counter'] += 1
+    else:
+        state['stuck_counter'] = 0
+        state['last_pos'] = current_pos
+    
+    # Se player mudou de posição significativamente, recalcula caminho
+    if state['last_target_pos'] is None or \
+       abs(closest_player.posx - state['last_target_pos'][0]) > 64 or \
+       abs(closest_player.posy - state['last_target_pos'][1]) > 64:
+        state['path'] = None  # Força recálculo
+    
     state['last_target_pos'] = (closest_player.posx, closest_player.posy)
     
     # Calcula direção para o player
@@ -241,7 +559,48 @@ def aggroPlayer(entity, game_map):
             entity.velx = 0.0
         if hasattr(entity, 'vely'):
             entity.vely = 0.0
+        state['path'] = None
+        state['stuck_counter'] = 0
         return
+    
+    # SE TRAVADO POR MAIS DE 15 FRAMES, USA A* PARA ENCONTRAR CAMINHO
+    if state['stuck_counter'] > 15:
+        # Calcula caminho usando A* se não tiver um caminho válido
+        if state['path'] is None or state['path_index'] >= len(state['path']):
+            start_pos = (entity.posx, entity.posy)
+            goal_pos = (closest_player.posx, closest_player.posy)
+            state['path'] = _astar_pathfinding(entity, start_pos, goal_pos, game_map)
+            state['path_index'] = 0
+            state['stuck_counter'] = 0  # Reseta contador ao calcular novo caminho
+            
+            # Se não encontrou caminho, tenta movimento direto novamente
+            if state['path'] is None:
+                state['stuck_counter'] = 0  # Reseta para tentar novamente depois
+    
+    # SE TEM UM CAMINHO VÁLIDO, SEGUE O CAMINHO
+    if state['path'] is not None and state['path_index'] < len(state['path']):
+        # Pega próximo waypoint do caminho
+        next_waypoint = state['path'][state['path_index']]
+        
+        # Calcula direção para o waypoint
+        waypoint_dx = next_waypoint[0] - entity.posx
+        waypoint_dy = next_waypoint[1] - entity.posy
+        
+        # Se chegou perto do waypoint, vai para o próximo
+        if abs(waypoint_dx) < 8 and abs(waypoint_dy) < 8:
+            state['path_index'] += 1
+            if state['path_index'] >= len(state['path']):
+                # Chegou ao fim do caminho, limpa e volta para movimento direto
+                state['path'] = None
+                state['path_index'] = 0
+            return
+        
+        # Usa a direção do waypoint ao invés da direção direta do player
+        dx = waypoint_dx
+        dy = waypoint_dy
+    else:
+        # Sem caminho ou caminho completo, usa movimento direto
+        state['path'] = None
     
     # Sistema de movimento com controle de velocidade
     # Atributos de movimento mais controlados
@@ -290,10 +649,8 @@ def aggroPlayer(entity, game_map):
     def aplicar_movimento_aggro(eixo):
         if eixo == 'x':
             vel, decpos, delta = 'velx', 'decposx', 'dx'
-            move_func = lambda passo: entity.move(passo, 0, game_map)
         else:
             vel, decpos, delta = 'vely', 'decposy', 'dy'
-            move_func = lambda passo: entity.move(0, passo, game_map)
 
         if abs(state[delta]) > 0.1:  # threshold menor para mais responsividade
             direcao = 1 if state[delta] > 0 else -1
@@ -319,8 +676,42 @@ def aggroPlayer(entity, game_map):
             setattr(entity, decpos, getattr(entity, decpos) - inteiro)
 
             if inteiro != 0:
-                move_func(inteiro)
-                state[delta] -= inteiro
+                # Salva posição anterior
+                old_posx = entity.posx
+                old_posy = entity.posy
+                
+                # Calcula nova posição
+                if eixo == 'x':
+                    new_posx = entity.posx + inteiro
+                    new_posy = entity.posy
+                else:
+                    new_posx = entity.posx
+                    new_posy = entity.posy + inteiro
+                
+                # VERIFICA SE A NOVA POSIÇÃO RESULTARIA EM COL=2 OU COL=3
+                if _check_forbidden_columns(entity, new_posx, new_posy, game_map):
+                    # Posição proibida! Cancela movimento neste eixo
+                    state[delta] = 0.0
+                    setattr(entity, vel, 0.0)
+                    return False
+                
+                # Tenta fazer o movimento (verifica col=1 e breakables)
+                if eixo == 'x':
+                    entity.move(inteiro, 0, game_map)
+                else:
+                    entity.move(0, inteiro, game_map)
+                
+                # Verifica se o movimento foi bem-sucedido
+                if entity.posx != old_posx or entity.posy != old_posy:
+                    # Movimento bem-sucedido
+                    state[delta] -= inteiro
+                    return True
+                else:
+                    # Movimento bloqueado por colisão normal
+                    state[delta] = 0.0
+                    setattr(entity, vel, 0.0)
+                    return False
+                    
             return abs(inteiro) > 0
         else:
             # Para gradualmente quando próximo do alvo
@@ -385,9 +776,8 @@ def biteAttack(entity, game_map):
     if not hasattr(entity, 'posx') or not hasattr(entity, 'posy'):
         return
     
-    # Verifica se há players para atacar
-    if not hasattr(PControl, 'Players') or not PControl.Players:
-        return
+    # Tenta capturar lista de players; se não houver, seguiremos com fallback de direção
+    players = getattr(PControl, 'Players', [])
     
     # Encontra o player mais próximo para mirar
     closest_player = None
@@ -396,7 +786,7 @@ def biteAttack(entity, game_map):
     entity_center_x = entity.posx + getattr(entity, 'sizex', 32) / 2
     entity_center_y = entity.posy + getattr(entity, 'sizey', 32) / 2
     
-    for player in PControl.Players:
+    for player in players:
         if not hasattr(player, 'posx') or not hasattr(player, 'posy'):
             continue
             
@@ -468,11 +858,226 @@ def biteAttack(entity, game_map):
         # Em caso de erro, apenas retorna sem crashar
         return
 
+
+def musicAttack(entity, game_map):
+    """
+    Lança um projétil musical (id 4) em direção ao player mais próximo.
+    Este ataque usa o comportamento wave_motion (movimento ondulatório).
+    """
+    import time
+    
+    # Importa classes necessárias
+    try:
+        from core.entity import PControl, PrjControl
+        from assets.classes.entities import Projectile
+    except ImportError:
+        try:
+            import main
+            PControl = main.PControl
+            PrjControl = main.PrjControl
+            from assets.classes.entities import Projectile
+        except Exception:
+            return
+    
+    # Verifica se entity tem os atributos necessários
+    if not hasattr(entity, 'posx') or not hasattr(entity, 'posy'):
+        return
+    
+    # Coleta players; se vazio, seguiremos com direção baseada no facing
+    players = getattr(PControl, 'Players', [])
+    
+    # Encontra o player mais próximo para mirar
+    closest_player = None
+    min_distance = float('inf')
+    
+    entity_center_x = entity.posx + getattr(entity, 'sizex', 32) / 2
+    entity_center_y = entity.posy + getattr(entity, 'sizey', 32) / 2
+    
+    for player in players:
+        if not hasattr(player, 'posx') or not hasattr(player, 'posy'):
+            continue
+            
+        player_center_x = player.posx + getattr(player, 'sizex', 32) / 2
+        player_center_y = player.posy + getattr(player, 'sizey', 32) / 2
+        
+        distance = math.sqrt((entity_center_x - player_center_x)**2 + 
+                           (entity_center_y - player_center_y)**2)
+        
+        if distance < min_distance:
+            min_distance = distance
+            closest_player = player
+    
+    # Define direção: mira no player mais próximo se houver; caso contrário usa facing
+    if closest_player:
+        target_x = closest_player.posx + getattr(closest_player, 'sizex', 32) / 2
+        target_y = closest_player.posy + getattr(closest_player, 'sizey', 32) / 2
+        dx = target_x - entity_center_x
+        dy = target_y - entity_center_y
+    else:
+        face = getattr(entity, 'facing', 'right')
+        if face == 'left':
+            dx, dy = -1, 0
+        elif face == 'right':
+            dx, dy = 1, 0
+        elif face == 'up':
+            dx, dy = 0, -1
+        else:
+            dx, dy = 0, 1
+    
+    # Normaliza a direção
+    distance = math.sqrt(dx*dx + dy*dy)
+    if distance > 0:
+        dir_x = dx / distance
+        dir_y = dy / distance
+    else:
+        dir_x = 1  # direção padrão
+        dir_y = 0
+    
+    # Cria o projétil musical de id 4
+    try:
+        print("Criando projétil musical")
+        # Posiciona ligeiramente à frente para evitar colisão imediata com o dono
+        spawn_offset = 12
+        spawn_x = entity_center_x + dir_x * spawn_offset
+        spawn_y = entity_center_y + dir_y * spawn_offset
+        projectile = Projectile(
+            id=0,
+            x=spawn_x,
+            y=spawn_y,
+            idProjectile=4,  # ID do projétil musical no banco de dados
+            dirx=dir_x,
+            diry=dir_y,
+            id_owner=entity.id,
+            type_owner=entity.type
+        )
+        
+        # Calcula o dano combinado
+        mob_attack = getattr(entity.stats, 'damage', 1) if hasattr(entity, 'stats') else 1
+        base_projectile_damage = getattr(projectile, 'damage', 1)
+        projectile.damage = mob_attack * base_projectile_damage
+        
+        # Adiciona o projétil ao controle
+        
+        PrjControl.add(projectile)
+        
+        # Ativa animação de ataque
+        entity.attacking = True
+        if hasattr(entity, 'texture'):
+            entity.texture.numFrame = 0
+        
+        # Define duração da animação de ataque
+        animation_duration = 0.6  # 600ms para animação de ataque musical
+        entity._attack_end_time = time.time() + animation_duration
+        
+        # Atualiza facing do boss baseado na direção do ataque
+        if abs(dx) > abs(dy):
+            entity.facing = "right" if dx > 0 else "left"
+        else:
+            entity.facing = "down" if dy > 0 else "up"
+    except Exception as e:
+        # Em caso de erro, apenas retorna sem crashar
+        print(f"Erro ao criar projétil musical: {e}")
+        return
+def expanding_ring_attack(entity, game_map):
+    import math, time
+    try:
+        from core.entity import PrjControl
+        from assets.classes.entities import Projectile
+    except Exception:
+        return
+
+    # Initial state
+    if not hasattr(entity, '_ring_attack_active') or not getattr(entity, '_ring_attack_active', False):
+        entity._ring_attack_active = True
+        entity._ring_attack_count = 0
+        entity._ring_attack_next_time = 0.0  # fire immediately
+
+    # Emit when time
+    now = time.time()
+    if now < getattr(entity, '_ring_attack_next_time', 0.0):
+        return
+
+    # If finished, clear state
+    if getattr(entity, '_ring_attack_count', 0) >= 3:
+        entity._ring_attack_active = False
+        return
+
+    # Compute center
+    cx = entity.posx + getattr(entity, 'sizex', 32) / 2.0
+    cy = entity.posy + getattr(entity, 'sizey', 32) / 2.0
+
+    # Angular step for 36 spokes
+    step = (2.0 * math.pi) / 36.0
+    offset = getattr(entity, '_ring_attack_count', 0) % 3  # phase shift per pulse
+
+    # Mark special active only during the actual spawn tick
+    entity.is_in_special_atk = True
+    # Spawn projectiles in pattern: 1 on, 2 off (i % 3 == offset)
+    spawn_offset = 16.0  # push a bit outwards to avoid self-collision
+    spawned = 0
+    for i in range(36):
+        if (i % 3) != offset:
+            continue
+        angle = step * i
+        dir_x = math.cos(angle)
+        dir_y = math.sin(angle)
+        sx = cx + dir_x * spawn_offset
+        sy = cy + dir_y * spawn_offset
+
+        try:
+            p = Projectile(
+                id=0,
+                x=sx,
+                y=sy,
+                idProjectile=5,  # Assumes id=3 is straight projectile
+                dirx=dir_x,
+                diry=dir_y,
+                id_owner=entity.id,
+                type_owner=entity.type
+            )
+            # Scale damage by entity attack as in other actions
+            mob_attack = getattr(entity.stats, 'damage', 1) if hasattr(entity, 'stats') else 1
+            p.damage = getattr(p, 'damage', 1) * mob_attack
+            PrjControl.add(p)
+            spawned += 1
+        except Exception:
+            continue
+
+    # Advance pulse
+    entity._ring_attack_count += 1
+    entity._ring_attack_next_time = now + 2.0
+
+    # Small attack animation feedback
+    try:
+        entity.attacking = True
+        if hasattr(entity, 'texture'):
+            entity.texture.numFrame = 0
+    except Exception:
+        pass
+
+    # After spawning this pulse, release the special flag immediately
+    entity.is_in_special_atk = False
+
+# Register new action
+
 actions = {
     action1.name : action1.action,
     "moveRat": moveRat,
+    "move_bombastic": move_bombastic,
     "animBombastic": animBombastic,
     "animRat": animRat,
     "aggroPlayer": aggroPlayer,
-    "biteAttack": biteAttack
+    "biteAttack": biteAttack,
+    "musicAttack": musicAttack,
+    "expanding_ring_attack": expanding_ring_attack,
 }
+
+# ==============================
+# Expanding ring attack (3 pulses)
+# - Repeats 3 times
+# - 2 seconds cooldown between pulses
+# - Angular pattern per pulse: 1 on, 2 off (gives 12 per pulse),
+#   with offset per pulse so that across 3 pulses all 36 positions are covered
+# ==============================
+
+

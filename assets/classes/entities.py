@@ -468,8 +468,8 @@ class Player(Entity):
         else:
             print("Erro: a arma não possui o método 'atack'.")
     def dash(self):
-        if self.cooldown_dash() and self.moving:
-        
+        if self.cooldown_dash() and self.moving and self.stats.stamina >= 20:
+            self.stats.stamina -= 20
             self.stats.add_effect(Effect("speed", self.stats.speed * 2,30))
             self.last_dash_time = time.time()
             
@@ -515,6 +515,29 @@ class Player(Entity):
         self.cooldown_dash()
         self.stats.update_effects()  
         
+        # Verifica se está sobre abismo (col=2) ou trap (col=3) - toda a parte inferior
+        abyss_detected = True
+        trap_detected = True
+        dy = self.sizey - 1  # Última linha (parte inferior)
+        for dx in range(self.sizex):
+            r = map.check_col(self.posx + dx, self.posy + dy, 0)
+            r_2 = map.check_col(self.posx + dx, self.posy + dy, 1)
+            if r != 2 and r_2 != 2:
+                abyss_detected = False
+            if r != 3 and r_2 != 3:
+                trap_detected = False
+        # Abismo: perde 10% da vida e volta para última posição válida (apenas se não estiver dashing)
+        if abyss_detected and not self.dashing:
+            damage = int(self.stats.maxHp * 0.1)
+            if damage < 1:
+                damage = 1
+            self.take_damage(damage)
+            self.posx = self.prev_posx
+            self.posy = self.prev_posy
+        # Trap: toma 10 de dano por segundo enquanto estiver no tile (apenas se não estiver dashing)
+        if trap_detected and not self.dashing:
+            self.take_damage(10/60)  # 10 de dano por segundo (assume 60 FPS)
+        
         # Atualiza efeito visual de dano (herdado da classe Entity)
         if hasattr(self, 'damage_effect_timer') and self.damage_effect_timer > 0:
             self.damage_effect_timer -= 1/60  # Assume 60 FPS
@@ -556,13 +579,42 @@ def save_player(player, filename="saves/player.json"):
         json.dump(player_dict, f, indent=4, ensure_ascii=False)
 class ItemEntity(Entity):
     def __init__(self, id, x, y, item: Item):
-        super().__init__(id, x, y, 16, 16, item.texture,"item")
+        texture = load_sprite_from_db(item.texture)
+        super().__init__(id, x, y, 16, 16, texture,"item")
+        
         self.item = item
+        self.type = "item"
+        self.behavior = None
+    
+    def run(self, map):
+        """Verifica colisão com players e adiciona item ao inventário"""
+        from core.entity import PControl, ItControl
+        
+        # Verifica colisão com todos os players
+        for player in PControl.Players:
+            if self.check_collision_with(player):
+                # Adiciona o item ao inventário do player
+                if hasattr(player, 'inv'):
+                    player.inv.get(self.item)
+                    print(f"Player pegou: {self.item.name}")
+                
+                # Remove o ItemEntity do mundo
+                ItControl.rem(self.id)
+                break
+    
+    def check_collision_with(self, other):
+        """Verifica se há colisão de hitbox com outra entidade"""
+        return (
+            self.posx < other.posx + other.sizex and
+            self.posx + self.sizex > other.posx and
+            self.posy < other.posy + other.sizey and
+            self.posy + self.sizey > other.posy
+        )  
 class Breakable(Entity):
     def __init__(self, id, x, y, sizex, sizey, texture, durability, drop):
         super().__init__(id, x, y, sizex, sizey, texture,"breakable")
         self.durability = durability
-        self.drop = drop
+        self.drop = get_item_from_db(drop)
     def take_damage(self, amount):
         self.durability -= amount
         if self.durability <= 0:
@@ -570,6 +622,10 @@ class Breakable(Entity):
     def destroy(self):
         from core.entity import BrControl
         BrControl.rem(self.id)
+        if self.drop:
+            from core.entity import ItControl
+            item_entity = ItemEntity(0, self.posx, self.posy, self.drop)
+            ItControl.add(item_entity)
     def check_collision(self, other):
         return (
             self.posx < other.posx + other.sizex and

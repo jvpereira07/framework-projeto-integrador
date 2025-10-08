@@ -1,3 +1,11 @@
+# Flag global para exibir hitboxes (configurada pelo Game)
+SHOW_HITBOXES = False
+
+def set_show_hitboxes(value: bool):
+    global SHOW_HITBOXES
+    SHOW_HITBOXES = bool(value)
+
+
 class Entity:
     def __init__(self, id, x, y, sizex, sizey, texture,type):
         self.id = id
@@ -13,6 +21,8 @@ class Entity:
         self.texture = texture
         self.facing = "left"
         self.attacking = False
+        # Flag para indicar se a entidade está executando um special attack
+        self.is_in_special_atk = False
         self.type = type
         # Propriedades para efeito visual de dano
         self.damage_effect_timer = 0
@@ -20,21 +30,25 @@ class Entity:
         self.damage_blink_count = 0
         self.damage_max_blinks = 4  # 2 piscadas completas (4 mudanças)
         self.damage_blink_interval = 0.2  # Tempo entre cada mudança de estado
+        
+        # Propriedades para sistema de abismo
+        self.prev_posx = x  # Posição anterior X
+        self.prev_posy = y  # Posição anterior Y
 
     def move(self, x, y, map):
         hitbox_width = self.sizex 
         hitbox_height = self.sizey 
     
+        # Checa apenas a linha inferior da hitbox (pé da entidade)
         can_move = True
-        for dy in range(hitbox_height):
-            for dx in range(hitbox_width):
-                r = map.check_col(self.posx + x + dx, self.posy + y + dy, 0)
-                r_2 = map.check_col(self.posx + x + dx, self.posy + y + dy, 1)
-            
-                if r == 1 or r_2 == 1:
-                    can_move = False
-                    break
-            if not can_move:
+        dy = hitbox_height - 1  # Última linha (pé)
+        for dx in range(hitbox_width):
+            r = map.check_col(self.posx + x + dx, self.posy + y + dy, 0)
+            r_2 = map.check_col(self.posx + x + dx, self.posy + y + dy, 1)
+
+
+            if r == 1 or r_2 == 1:
+                can_move = False
                 break
 
         # Bloqueia por breakables (objetos quebráveis) como obstáculos
@@ -74,9 +88,38 @@ class Entity:
             self.damage_effect_timer -= 1/60  # Assume 60 FPS
             if self.damage_effect_timer <= 0:
                 self.damage_effect_timer = 0
+        
+        # Verifica se está sobre abismo (col=2) ou trap (col=3) - toda a parte inferior
+        if hasattr(self, "stats"):
+            abyss_detected = True
+            trap_detected = True
+            dy = self.sizey - 1  # Última linha (parte inferior)
+            for dx in range(self.sizex):
+                r = map.check_col(self.posx + dx, self.posy + dy, 0)
+                r_2 = map.check_col(self.posx + dx, self.posy + dy, 1)
+                if r != 2 and r_2 != 2:
+                    abyss_detected = False
+                if r != 3 and r_2 != 3:
+                    trap_detected = False
+            # Abismo: perde 10% da vida e volta para última posição válida (apenas se não estiver dashing)
+            if abyss_detected and (not hasattr(self, 'dashing') or not self.dashing):
+                damage = int(self.stats.maxHp * 0.1)
+                if damage < 1:
+                    damage = 1
+                self.take_damage(damage)
+                self.posx = self.prev_posx
+                self.posy = self.prev_posy
+            # Trap: toma 10 de dano por segundo enquanto estiver no tile (apenas se não estiver dashing)
+            if trap_detected and (not hasattr(self, 'dashing') or not self.dashing):
+                self.take_damage(10/60)  # 10 de dano por segundo (assume 60 FPS)
+        
         if self.behavior:
             self.behavior.run(self, map)
     def take_damage(self, amount):
+        # Se estiver dashing, não toma dano
+        if hasattr(self, 'dashing') and self.dashing:
+            return
+            
         self.stats.hp -= amount
         # Ativa o efeito visual de dano
         self.damage_effect_timer = self.damage_effect_duration
@@ -112,7 +155,13 @@ class Entity:
         # Após todas as piscadas, sempre normal
         return False
     def check_projectile(self):
-        # Checa se há algum projétil se colidindo com o jogador
+        # No estado de dashing, o player não interage com projéteis
+        try:
+            if getattr(self, 'type', None) == 'player' and getattr(self, 'dashing', False):
+                return
+        except Exception:
+            pass
+        # Checa se há algum projétil se colidindo com a entidade
         for projectile in PrjControl.Projectiles:
             if projectile.id_owner == self.id and projectile.type_owner == self.type:
                 continue  # Ignora projéteis do próprio jogador
@@ -162,6 +211,17 @@ class EControl:
                 color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
             
             entidades.texture.draw(screen_x, screen_y, entidades.anim, zoom, color_filter)
+            # Desenha a hitbox do mob com transparência parcial (se habilitado)
+            if SHOW_HITBOXES:
+                try:
+                    if hasattr(entidades, 'type') and entidades.type == 'mob':
+                        from core.resources import draw_rect
+                        hb_color = (0, 255, 0, 80)  # Verde translúcido
+                        hb_w = int(entidades.sizex * zoom)
+                        hb_h = int(entidades.sizey * zoom)
+                        draw_rect(int(screen_x), int(screen_y), hb_w, hb_h, hb_color)
+                except Exception:
+                    pass
             # Renderiza texto de vida na cabeça dos mobs
             from core.resources import draw_text
             draw_text(f"{entidades.stats.hp}/{entidades.stats.maxHp}hp", screen_x, screen_y - 20, 10, (255,0,0,255),"Arial",'center')
@@ -193,6 +253,16 @@ class PrjControl:
             screen_x = (proj.posx - camera_x) * zoom
             screen_y = (proj.posy - camera_y) * zoom
             proj.texture.draw(screen_x, screen_y, proj.anim, zoom, None)
+            # Desenha a hitbox do projétil (se habilitado)
+            if SHOW_HITBOXES:
+                try:
+                    from core.resources import draw_rect
+                    hb_color = (255, 128, 0, 80)  # Laranja translúcido
+                    hb_w = int(getattr(proj, 'sizex', 0) * zoom)
+                    hb_h = int(getattr(proj, 'sizey', 0) * zoom)
+                    draw_rect(int(screen_x), int(screen_y), hb_w, hb_h, hb_color)
+                except Exception:
+                    pass
 class PControl:
     Players = []
     
@@ -255,6 +325,17 @@ class PControl:
                         pass
                     # Aplica o mesmo filtro de cor na arma se o player estiver tomando dano
                     weapon_texture.draw(screen_x, screen_y, player.anim - 12, zoom, color_filter)
+
+            # Desenha a hitbox do player (se habilitado)
+            if SHOW_HITBOXES:
+                try:
+                    from core.resources import draw_rect
+                    hb_color = (0, 128, 255, 80)  # Azul claro translúcido
+                    hb_w = int(player.sizex * zoom)
+                    hb_h = int(player.sizey * zoom)
+                    draw_rect(int(screen_x), int(screen_y), hb_w, hb_h, hb_color)
+                except Exception:
+                    pass
     
     def get_main_player():
         """Retorna o player principal (primeiro da lista)"""
@@ -293,3 +374,36 @@ class BrControl:
                 color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
             
             breakables.texture.draw(screen_x, screen_y, breakables.anim, zoom, color_filter)
+class ItControl:
+    items = []
+    
+    def add(e):
+        e.id = len(ItControl.items) + 1
+        ItControl.items.append(e)
+
+    def rem(id):
+        item_remover = None
+        for e in ItControl.items:
+            if e.id == id:
+                item_remover = e
+                break
+        if item_remover:
+            ItControl.items.remove(item_remover)
+            for i, item in enumerate(ItControl.items):
+                item.id = i + 1
+
+    def run(map):
+        for item in ItControl.items:
+            item.run(map)
+
+    def draw(camera_x, camera_y, zoom):
+        for item in ItControl.items:
+            screen_x = (item.posx - camera_x) * zoom
+            screen_y = (item.posy - camera_y) * zoom
+            color_filter = None
+            if hasattr(item, 'should_render_damage_effect') and item.should_render_damage_effect():
+                # Filtro vermelho com transparência
+                color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
+            
+            # Desenha itens com metade do tamanho
+            item.texture.draw(screen_x, screen_y, item.anim, zoom * 0.333333, color_filter)

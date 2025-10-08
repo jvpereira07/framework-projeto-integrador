@@ -3,7 +3,7 @@
     <!-- HUD do jogo com barras de status -->
     
     <!-- Container principal para o HUD no canto superior esquerdo -->
-    <container x="90%" y="5%" sizex="200" sizey="32" texture="none" border="false">
+    <container x="90%" y="5%" sizex="200" sizey="64" texture="none" border="false">
         
         <!-- Barra de HP -->
         
@@ -12,6 +12,9 @@
         <!-- Barra horizontal reversa (direita -> esquerda) -->
     <statsbar x="95%" y="5%" sizex="200" sizey="25"
               texture_empty="28" texture_full="27" stat="hp"
+              orientation="horizontal" direction="positive" />
+    <statsbar x="95%" y="90%" sizex="200" sizey="25"
+              texture_empty="36" texture_full="37" stat="stamina"
               orientation="horizontal" direction="positive" />
     
        
