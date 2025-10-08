@@ -1,25 +1,16 @@
 {
-    "id": 1,
     "position": {
-<<<<<<< HEAD
-        "x": 112,
-        "y": 206
-    },
-    "stats": {
-        "hp": 85.0,
-=======
         "x": 312,
         "y": 308
     },
     "stats": {
         "hp": 90.0,
->>>>>>> 15b7b4b1c2167757c7f91de89c46d9742ed1bec4
         "maxHp": 150,
         "regenHp": 0.5,
         "mana": 100,
         "maxMana": 100,
         "regenMana": 0.3,
-        "stamina": 20,
+        "stamina": 60,
         "maxStamina": 80,
         "regenStamina": 0.4,
         "damage": 0.5,
@@ -34,33 +25,6 @@
                 "size": 42
             }
         },
-<<<<<<< HEAD
-        "quant": 2118,
-        "inv": [
-            {
-                "item_type": "Consumable",
-                "name": "Poção de mana",
-                "texture": 10,
-                "description": "Restaura 100 pontos de mana.",
-                "id": 3,
-                "heal": 0.0,
-                "mana": 100.0,
-                "stamina": 0.0,
-                "effect": "",
-                "quant": 68
-            },
-            {
-                "item_type": "Consumable",
-                "name": "Bebida energética",
-                "texture": 38,
-                "description": "Regenera a stamina do usuário \"Vai conhecer meu treme terra\"",
-                "id": 4,
-                "heal": 0,
-                "mana": 0,
-                "stamina": 50.0,
-                "effect": "0",
-                "quant": 508
-=======
         "quant": 1320,
         "inv": [
             {
@@ -71,7 +35,6 @@
                 "description": "Item de teste",
                 "id": 2,
                 "quant": 1
->>>>>>> 15b7b4b1c2167757c7f91de89c46d9742ed1bec4
             },
             {
                 "item_type": "Consumable",
@@ -80,10 +43,10 @@
                 "description": "Restaura 100 pontos de vida",
                 "id": 1,
                 "heal": 100.0,
-                "mana": 0,
-                "stamina": 0,
+                "mana": 0.0,
+                "stamina": 0.0,
                 "effect": "",
-                "quant": 4
+                "quant": 9
             }
         ]
     },

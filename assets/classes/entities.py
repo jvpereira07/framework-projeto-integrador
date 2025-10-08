@@ -298,7 +298,7 @@ class Player(Entity):
             try:
                 texture = int(texture)
             except Exception:
-                pass
+                texture = None # FIX: Garante que a textura seja None se a conversão falhar
 
         quant = item_data.get("quant", 1)
 
