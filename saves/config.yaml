@@ -1,9 +1,9 @@
 screen:
-  width: 800
-  height: 600
+  width: 1280
+  height: 720
 project:
   name: "projeto Integrador"
   window_name: "projeto_integrador"
   FPS: 60
 debug:
-  showHitboxes: true
+  showHitboxes: false

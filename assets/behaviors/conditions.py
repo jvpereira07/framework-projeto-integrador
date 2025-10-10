@@ -6,6 +6,7 @@ import math
 _last_time_timer_2s_map = {}
 _last_time_timer_5s_map = {}
 _last_time_timer_30s_map = {}
+_last_time_timer_4s_map = {}
 
 def timer_2s(entity=None, map_ref=None):
     if entity is None:
@@ -32,6 +33,19 @@ def timer_5s(entity=None, map_ref=None):
         _last_time_timer_5s_map[entity.id] = now
         return True
     
+    return False
+def timer_4s(entity=None, map_ref=None):
+    """Timer que retorna True a cada 4 segundos"""
+    if entity is None:
+        return False
+
+    now = time.time()
+    last_time = _last_time_timer_4s_map.get(entity.id, 0)
+
+    if now - last_time >= 4:
+        _last_time_timer_4s_map[entity.id] = now
+        return True
+
     return False
 def timer_30s(entity=None, map_ref=None):
     """Timer que retorna True a cada 30 segundos"""
@@ -218,6 +232,7 @@ con7 = Condition("timer-2s", timer_2s)
 con8 = Condition("not-in-special-atk", not_in_special_attack)
 con9 = Condition("nao-em-ataque-especial", nao_em_ataque_especial)
 con10 = Condition("timer-30s", timer_30s)
+con11 = Condition("timer-4s", timer_4s)
 
 # Novas condições de HP
 con_hp_l30 = Condition("hp-lower-30", hp_lower_30)
@@ -238,6 +253,7 @@ conditions = {
     con6.name: con6.condition,
     con7.name: con7.condition,
     con10.name: con10.condition,
+    con11.name: con11.condition,
     # HP thresholds
     con_hp_l30.name: con_hp_l30.condition,
     con_hp_l50.name: con_hp_l50.condition,

@@ -299,6 +299,8 @@ def animBombastic(entity,map):
         
     elif entity.facing == "right":
         entity.anim = 1
+    if entity.is_in_special_atk:
+        entity.anim = 3
 def moveRat(entity, game_map):
     global _move_states
     eid = id(entity)
@@ -979,6 +981,12 @@ def musicAttack(entity, game_map):
         print(f"Erro ao criar projétil musical: {e}")
         return
 def expanding_ring_attack(entity, game_map):
+    """
+    Dispara um ataque em anel em 3 pulsos (12 projéteis por pulso, total 36 direções),
+    com 2s entre cada pulso. O conjunto de 3 pulsos (trio) só pode iniciar novamente
+    após 30s do início anterior, controlado internamente (sem depender dos timers
+    condicionais globais).
+    """
     import math, time
     try:
         from core.entity import PrjControl
@@ -986,35 +994,44 @@ def expanding_ring_attack(entity, game_map):
     except Exception:
         return
 
-    # Initial state
-    if not hasattr(entity, '_ring_attack_active') or not getattr(entity, '_ring_attack_active', False):
+    now = time.time()
+
+    # Sequencer cooldown (30s) independente dos timers condicionais
+    # Permite o primeiro trio imediatamente (default = 0.0)
+    next_seq_time = getattr(entity, '_ring_next_sequence_time', 0.0)
+
+    # Se não há um trio ativo, só inicia se o cooldown de 30s do trio já passou
+    if not getattr(entity, '_ring_attack_active', False):
+        if now < next_seq_time:
+            return  # ainda no cooldown do trio completo
+        # inicia novo trio imediatamente
         entity._ring_attack_active = True
         entity._ring_attack_count = 0
-        entity._ring_attack_next_time = 0.0  # fire immediately
+        entity._ring_attack_next_time = 0.0  # primeiro pulso agora
+        entity._ring_sequence_started_at = now
 
-    # Emit when time
-    now = time.time()
+    # Se trio ativo, respeita o intervalo entre pulsos
     if now < getattr(entity, '_ring_attack_next_time', 0.0):
         return
 
-    # If finished, clear state
+    # Se terminou os 3 pulsos, finaliza o trio e agenda próximo trio para +30s (a partir do término)
     if getattr(entity, '_ring_attack_count', 0) >= 3:
         entity._ring_attack_active = False
+        entity._ring_next_sequence_time = now + 30.0
         return
 
-    # Compute center
+    # Centro do spawn
     cx = entity.posx + getattr(entity, 'sizex', 32) / 2.0
     cy = entity.posy + getattr(entity, 'sizey', 32) / 2.0
 
-    # Angular step for 36 spokes
+    # Ângulo base para 36 direções com padrão 1 ligado, 2 desligados
     step = (2.0 * math.pi) / 36.0
-    offset = getattr(entity, '_ring_attack_count', 0) % 3  # phase shift per pulse
+    offset = getattr(entity, '_ring_attack_count', 0) % 3  # fase do pulso
 
-    # Mark special active only during the actual spawn tick
+    # Marca special atacando apenas no tick de criação dos projéteis
     entity.is_in_special_atk = True
-    # Spawn projectiles in pattern: 1 on, 2 off (i % 3 == offset)
-    spawn_offset = 16.0  # push a bit outwards to avoid self-collision
-    spawned = 0
+
+    spawn_offset = 16.0  # ligeiro afastamento para evitar colisão com o dono
     for i in range(36):
         if (i % 3) != offset:
             continue
@@ -1029,25 +1046,25 @@ def expanding_ring_attack(entity, game_map):
                 id=0,
                 x=sx,
                 y=sy,
-                idProjectile=5,  # Assumes id=3 is straight projectile
+                idProjectile=5,
                 dirx=dir_x,
                 diry=dir_y,
                 id_owner=entity.id,
                 type_owner=entity.type
             )
-            # Scale damage by entity attack as in other actions
+            # Dano escalado pelo ataque do dono
             mob_attack = getattr(entity.stats, 'damage', 1) if hasattr(entity, 'stats') else 1
             p.damage = getattr(p, 'damage', 1) * mob_attack
             PrjControl.add(p)
-            spawned += 1
         except Exception:
+            # se um projétil falhar, continua os demais
             continue
 
-    # Advance pulse
+    # Próximo pulso em 2s e avança contagem
     entity._ring_attack_count += 1
-    entity._ring_attack_next_time = now + 2.0
+    entity._ring_attack_next_time = now + 1.0
 
-    # Small attack animation feedback
+    # Feedback de animação de ataque
     try:
         entity.attacking = True
         if hasattr(entity, 'texture'):
@@ -1055,7 +1072,7 @@ def expanding_ring_attack(entity, game_map):
     except Exception:
         pass
 
-    # After spawning this pulse, release the special flag immediately
+    # Libera a flag de special fora do tick de spawn
     entity.is_in_special_atk = False
 
 # Register new action
