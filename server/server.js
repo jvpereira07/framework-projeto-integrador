@@ -304,7 +304,13 @@ function getSanitizedGameState() {
             anim_row: player.anim,
             stats: player.stats, // Envia o objeto de stats completo
             inventory: player.inv?.itens || [], // 🔧 CORREÇÃO: Envia o array correto
-            ui_state: player.ui_state // Envia o estado da UI (hud, inventory, etc)
+            ui_state: player.ui_state, // Envia o estado da UI (hud, inventory, etc)
+            // --- ADIÇÃO ---
+            // Adiciona o estado do jogador para controle de animação no cliente
+            direction: player.direction,
+            moving: player.moving,
+            attacking: player.attacking,
+            dashing: player.dashing
         };
 
         // Se o jogador estiver atacando, adiciona os dados da animação da arma
@@ -317,6 +323,7 @@ function getSanitizedGameState() {
 
         state.players[id] = sanitizedPlayer;
     }
+
 
     // Sanitiza mobs
     for (const id in gameState.mobs) {
