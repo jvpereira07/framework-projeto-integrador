@@ -11,8 +11,8 @@ const __dirname = path.dirname(__filename);
 // 1. O arquivo JSON está na mesma pasta que o script
 const playerJsonPath = path.join(__dirname, 'player.json');
 
-// 2. O banco de dados está um nível ACIMA da pasta do script
-const dbPath = path.join(__dirname, '..', 'data-server.db');
+// 2. O banco de dados está na mesma pasta do script
+const dbPath = path.join(__dirname, 'data-server.db');
 
 // Função principal para executar a migração
 async function migrarPlayer() {

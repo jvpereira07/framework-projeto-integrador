@@ -6,11 +6,13 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Item from '../item.js';
+import Weapon from '../items/Weapon.js';
 
 // --- CONFIGURAÇÃO DO BANCO DE DADOS ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dbPath = path.join(__dirname, '..', '..', '..', 'assets', 'data', 'data.db');
+const dbPath = path.join(__dirname, '..', '..', 'data-server.db');
 
 // A conexão com o BD permanece aberta para ser reutilizada
 const dbPromise = open({
@@ -47,12 +49,11 @@ export default class Player extends Entity {
         this.ui_state = 'hud'; // Estado inicial da UI
 
         // Populando inventário e equipamentos
-        // (Assumindo que as classes Inventory e Equiped têm métodos para isso)
         if (playerData.jsonInv && this.inv.loadItems) {
-            this.inv.loadItems(playerData.jsonInv);
+            this.inv.loadItems(playerData.jsonInv, this.createItemFromData);
         }
         if (playerData.jsonEquips && this.equip.loadEquips) {
-            this.equip.loadEquips(playerData.jsonEquips);
+            this.equip.loadEquips(playerData.jsonEquips, this.createItemFromData);
         }
 
         this.direction = "down";
@@ -60,6 +61,34 @@ export default class Player extends Entity {
         this.attacking = false;
         this.dashing = false;
         this.anim = 0;
+    }
+
+    createItemFromData(itemData) {
+        if (!itemData) return null;
+
+        switch (itemData.item_type) {
+            case 'Weapon':
+                return new Weapon(
+                    itemData.name,
+                    itemData.description,
+                    itemData.id,
+                    itemData.texture,
+                    itemData.damage,
+                    itemData.critical,
+                    itemData.range,
+                    itemData.speed,
+                    itemData.texture_action // Passa a textura de animação
+                );
+            // Outros tipos de item podem ser adicionados aqui
+            default:
+                return new Item(
+                    itemData.name,
+                    itemData.item_type,
+                    itemData.texture,
+                    itemData.description,
+                    itemData.id
+                );
+        }
     }
 
     /**
@@ -147,6 +176,38 @@ export default class Player extends Entity {
                 "down": 2,
                 "up": 3
             }[this.direction] || 4;
+        }
+    }
+
+    /**
+     * Inicia a ação de ataque, delegando para a arma equipada.
+     * @param {object} gameState - O estado atual do jogo.
+     * @param {object} mousePos - A posição do mouse para mira.
+     */
+    atack(gameState, mousePos) {
+        const weapon = this.equip.hand1; // Usa a arma na mão principal
+
+        if (weapon && typeof weapon.atack === 'function') {
+            // Define a direção do jogador com base na mira
+            const dx = mousePos.x - this.posx;
+            const dy = mousePos.y - this.posy;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                this.direction = dx > 0 ? "right" : "left";
+            } else {
+                this.direction = dy > 0 ? "down" : "up";
+            }
+            
+            // Delega a lógica do ataque para a arma
+            weapon.atack(this, gameState, mousePos);
+
+            // Ativa o estado de "attacking" para a animação
+            // A própria arma controla o cooldown, mas o jogador controla a animação
+            this.attacking = true;
+            // Define um timer para resetar a animação. 300ms é um bom começo.
+            setTimeout(() => { this.attacking = false; }, 300); 
+        } else {
+            // console.log("Nenhuma arma equipada ou a arma não tem o método 'atack'.");
         }
     }
 

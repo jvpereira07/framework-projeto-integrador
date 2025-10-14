@@ -10,7 +10,9 @@ import authRoutes from './auth_routes.js';
 
 import Player from './models/entities/Player.js';
 import Mob from './models/entities/Mob.js';
-import Map from './models/Map.js';
+import Projectile from './models/entities/Projectile.js';
+import { handlePlayerInput } from './models/InputController.js';
+import Map from './models/map.js';
 
 // --- 1. CONFIGURAÇÃO INICIAL ---
 const __filename = fileURLToPath(import.meta.url);
@@ -35,8 +37,10 @@ const TICK_RATE = 60; // 60 updates por segundo
 // --- 2. ESTADO DO JOGO ---
 const gameState = {
     players: {},
-    mobs: {}
+    mobs: {},
+    projectiles: {}
 };
+let nextProjectileId = 0; // Contador para IDs de projéteis
 
 let map = null;
 
@@ -47,7 +51,7 @@ async function main() {
 
     // Constrói os caminhos para os assets a partir da raiz do projeto
     const mapPath = path.join(projectRoot, 'assets', 'data', 'map.json');
-    const dbPath = path.join(projectRoot, 'assets', 'data', 'data.db');
+    const dbPath = path.join(__dirname, 'data-server.db');
 
     // Carrega o mapa e os dados de colisão
     map = await Map.create(mapPath, dbPath);
@@ -83,7 +87,6 @@ async function main() {
 
 // --- 4. GERENCIAMENTO DE CONEXÕES ---
 
-// Middleware de autenticação do Socket.IO
 io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
@@ -132,7 +135,39 @@ io.on('connection', async (socket) => {
         const player = gameState.players[socket.id];
         if (player) {
             // A lógica de movimento será aplicada no gameLoop
-            player.inputs = input.keys; // Armazena os inputs
+            // console.log(`[DEBUG] Input recebido de ${socket.id}:`, JSON.stringify(input));
+            player.inputs = input; // Armazena o payload de input completo (teclas e mouse)
+        }
+    });
+
+    // 🔧 NOVO: Handler de ações de inventário
+    socket.on('inventory_action', (payload) => {
+        const player = gameState.players[socket.id];
+        if (!player || !player.inv) {
+            return socket.emit('inventory_error', { message: 'Jogador ou inventário inválido' });
+        }
+
+        console.log(`[Inventory] Ação recebida de ${socket.id}:`, payload);
+
+        switch (payload.action) {
+            case 'use_item':
+                handleUseItem(player, payload, socket);
+                break;
+            
+            case 'drop_item':
+                handleDropItem(player, payload, socket);
+                break;
+            
+            case 'equip_item':
+                handleEquipItem(player, payload, socket);
+                break;
+            
+            case 'unequip_item':
+                handleUnequipItem(player, payload, socket);
+                break;
+            
+            default:
+                socket.emit('inventory_error', { message: 'Ação desconhecida' });
         }
     });
     
@@ -148,7 +183,7 @@ function gameLoop() {
     // Atualiza todos os jogadores
     for (const id in gameState.players) {
         const player = gameState.players[id];
-        updatePlayer(player);
+        handlePlayerInput(player, map, gameState);
         player.run(map);
     }
 
@@ -158,66 +193,33 @@ function gameLoop() {
         updateMob(mob);
     }
 
+    // Atualiza todos os projéteis
+    updateProjectiles();
+
     // Envia o estado atualizado para todos os clientes
     io.emit('game_state', getSanitizedGameState());
 }
 
 // --- 6. LÓGICA DE ATUALIZAÇÃO ---
 
-function updatePlayer(player) {
-    if (!player.inputs) return;
+function updateProjectiles() {
+    for (const id in gameState.projectiles) {
+        const projectile = gameState.projectiles[id];
+        projectile.run(map, gameState); // O 'run' do projétil agora armazena a colisão
 
-    const speed = player.stats.speed || 2;
-    let dx = 0;
-    let dy = 0;
-
-    if (player.inputs.up) dy -= 1;
-    if (player.inputs.down) dy += 1;
-    if (player.inputs.left) dx -= 1;
-    if (player.inputs.right) dx += 1;
-
-    if (dx === 0 && dy === 0) {
-        player.moving = false;
-    } else {
-        player.moving = true;
-        if (Math.abs(dx) > Math.abs(dy)) {
-            player.direction = dx > 0 ? "right" : "left";
-        } else {
-            player.direction = dy > 0 ? "down" : "up";
-        }
-    }
-
-    // Normaliza o vetor de movimento para evitar movimento mais rápido na diagonal
-    const magnitude = Math.sqrt(dx * dx + dy * dy);
-    if (magnitude > 0) {
-        dx = (dx / magnitude) * speed;
-        dy = (dy / magnitude) * speed;
-    }
-
-    // TODO: Adicionar verificação de colisão com o mapa
-    player.posx += dx;
-    player.posy += dy;
-
-    // Processa ataque
-    if (player.inputs.mouse && player.inputs.mouse.button) {
-        // Define a direção do ataque baseado na posição do mouse
-        if (Math.abs(player.inputs.mouse.dx) >= Math.abs(player.inputs.mouse.dy)) {
-            player.direction = player.inputs.mouse.dx > 0 ? "right" : "left";
-        } else {
-            player.direction = player.inputs.mouse.dy > 0 ? "down" : "up";
+        // Se o projétil colidiu com algo, processa o dano
+        if (projectile.collidedWith) {
+            const attacker = gameState.players[projectile.ownerId] || gameState.mobs[projectile.ownerId];
+            // Passamos o próprio projétil como 'weapon' pois ele contém a propriedade 'damage'
+            if (attacker) {
+                processDamage(attacker, projectile.collidedWith, projectile);
+            }
         }
 
-        // Atualiza a animação do ataque
-        if (!player.lastAttack || Date.now() - player.lastAttack > 500) { // Cooldown de 500ms
-            player.attacking = true;
-            player.attackTimer = Date.now() + 300; // 300ms de duração da animação
-            player.lastAttack = Date.now();
+        // Remove projétil se ele colidiu com algo ou excedeu seu alcance
+        if (projectile.shouldBeRemoved || projectile.distanceTraveled > projectile.range) {
+            delete gameState.projectiles[id];
         }
-    }
-
-    // Atualiza estado de ataque
-    if (player.attacking && Date.now() >= player.attackTimer) {
-        player.attacking = false;
     }
 }
 
@@ -226,7 +228,7 @@ function processDamage(attacker, target, weapon) {
     const damage = weapon.damage || 1;
     
     // Aplica o dano ao alvo
-    if (target.stats.hp) {
+    if (target.stats && target.stats.hp) {
         target.stats.hp -= damage;
         
         // Se o alvo morreu
@@ -286,19 +288,37 @@ function updateMob(mob) {
 // --- 7. SERIALIZAÇÃO DE DADOS ---
 
 function getSanitizedGameState() {
-    const state = { players: {}, mobs: {} };
+    const state = { players: {}, mobs: {}, projectiles: {} };
 
+    // Sanitiza jogadores
     for (const id in gameState.players) {
         const player = gameState.players[id];
-        state.players[id] = {
+        
+        // 🔍 DEBUG: Verifica se o inventário existe e tem itens (comentar em produção)
+        // console.log(`[DEBUG] Player ${id} inventory:`, player.inv?.itens);
+        
+        const sanitizedPlayer = {
             x: player.posx,
             y: player.posy,
             texture_id: player.texture,
             anim_row: player.anim,
-            stats: player.stats // Envia o objeto de stats completo
+            stats: player.stats, // Envia o objeto de stats completo
+            inventory: player.inv?.itens || [], // 🔧 CORREÇÃO: Envia o array correto
+            ui_state: player.ui_state // Envia o estado da UI (hud, inventory, etc)
         };
+
+        // Se o jogador estiver atacando, adiciona os dados da animação da arma
+        if (player.attacking && player.equip && player.equip.hand1 && player.equip.hand1.texture_action) {
+            sanitizedPlayer.weapon_anim = {
+                texture_id: player.equip.hand1.texture_action,
+                anim_row: player.anim - 12 // Mapeia a animação do player (12-15) para a da arma (0-3)
+            };
+        }
+
+        state.players[id] = sanitizedPlayer;
     }
 
+    // Sanitiza mobs
     for (const id in gameState.mobs) {
         const mob = gameState.mobs[id];
         state.mobs[id] = {
@@ -308,12 +328,173 @@ function getSanitizedGameState() {
         };
     }
 
+    // Sanitiza projéteis
+    for (const id in gameState.projectiles) {
+        const projectile = gameState.projectiles[id];
+        state.projectiles[id] = {
+            x: projectile.posx,
+            y: projectile.posy,
+            texture_id: projectile.texture, // O cliente precisará saber qual sprite desenhar
+        };
+    }
+
     return state;
 }
 
-// --- 8. CADASTRO/LOGIN ---
+// --- 8. FUNÇÕES DE MANIPULAÇÃO DE INVENTÁRIO ---
 
+function handleMoveItem(player, payload, socket) {
+    const { from_slot, to_slot } = payload;
+    
+    // Validação
+    if (from_slot < 0 || from_slot >= player.inv.itens.length ||
+        to_slot < 0 || to_slot >= player.inv.itens.length) {
+        return socket.emit('inventory_error', { message: 'Slots inválidos' });
+    }
 
+    // Pega os itens dos slots
+    const fromItem = player.inv.itens[from_slot];
+    const toItem = player.inv.itens[to_slot];
+
+    console.log(`[Inventory] Movendo: Slot ${from_slot} (${fromItem?.name || 'vazio'}) -> Slot ${to_slot} (${toItem?.name || 'vazio'})`);
+
+    // Caso 1: Empilhamento (mesmo item, mesmo tipo consumível)
+    if (fromItem && toItem && 
+        fromItem.id === toItem.id && 
+        fromItem.item_type === 'Consumable') {
+        
+        toItem.quant += fromItem.quant;
+        player.inv.itens[from_slot] = null;
+        console.log(`[Inventory] Empilhado: ${toItem.name} agora tem ${toItem.quant} unidades`);
+    }
+    // Caso 2: Troca simples
+    else {
+        player.inv.itens[to_slot] = fromItem;
+        player.inv.itens[from_slot] = toItem;
+        console.log(`[Inventory] Trocado: Slot ${from_slot} <-> Slot ${to_slot}`);
+    }
+
+    // O estado atualizado será enviado no próximo game_state
+    socket.emit('inventory_success', { message: 'Item movido' });
+}
+
+function handleUseItem(player, payload, socket) {
+    const { slot } = payload;
+    const item = player.inv.itens[slot];
+
+    if (!item) {
+        return socket.emit('inventory_error', { message: 'Slot vazio' });
+    }
+
+    console.log(`[Inventory] Usando item: ${item.name} (tipo: ${item.item_type})`);
+
+    switch (item.item_type) {
+        case 'Consumable':
+            // Aplica efeitos (exemplo: poção de cura)
+            if (item.heal) {
+                player.stats.hp = Math.min(player.stats.hp + item.heal, player.stats.maxHp);
+                console.log(`[Inventory] ${item.name} curou ${item.heal} HP`);
+            }
+            if (item.mana) {
+                player.stats.mana = Math.min(player.stats.mana + item.mana, player.stats.maxMana);
+            }
+            if (item.stamina) {
+                player.stats.stamina = Math.min(player.stats.stamina + item.stamina, player.stats.maxStamina);
+            }
+
+            // Remove uma unidade
+            item.quant -= 1;
+            if (item.quant <= 0) {
+                player.inv.itens[slot] = null;
+            }
+            break;
+
+        case 'Equipment':
+        case 'Weapon':
+            // Delega para equipar
+            return handleEquipItem(player, { slot }, socket);
+
+        default:
+            return socket.emit('inventory_error', { message: 'Item não pode ser usado' });
+    }
+
+    socket.emit('inventory_success', { message: 'Item usado' });
+}
+
+function handleEquipItem(player, payload, socket) {
+    const { slot } = payload;
+    const item = player.inv.itens[slot];
+
+    if (!item) {
+        return socket.emit('inventory_error', { message: 'Slot vazio' });
+    }
+
+    if (item.item_type !== 'Equipment' && item.item_type !== 'Weapon') {
+        return socket.emit('inventory_error', { message: 'Item não equipável' });
+    }
+
+    console.log(`[Inventory] Equipando: ${item.name}`);
+
+    // Remove do inventário
+    player.inv.itens[slot] = null;
+
+    // Equipa (o método equip retorna o item que foi desequipado, se houver)
+    const unequipped = player.equip.equip(item);
+
+    // Se algo foi desequipado, coloca de volta no inventário
+    if (unequipped) {
+        player.inv.get(unequipped, unequipped.quant || 1);
+        console.log(`[Inventory] Desequipado: ${unequipped.name}`);
+    }
+
+    socket.emit('inventory_success', { message: 'Item equipado' });
+}
+
+function handleUnequipItem(player, payload, socket) {
+    const { equipment_slot } = payload; // ex: 'hand1', 'head', etc.
+
+    const item = player.equip.unEquip(equipment_slot);
+    if (!item) {
+        return socket.emit('inventory_error', { message: 'Slot de equipamento vazio' });
+    }
+
+    console.log(`[Inventory] Desequipando: ${item.name} do slot ${equipment_slot}`);
+
+    // Coloca o item de volta no inventário
+    player.inv.get(item, item.quant || 1);
+
+    socket.emit('inventory_success', { message: 'Item desequipado' });
+}
+
+function handleDropItem(player, payload, socket) {
+    const { slot, quantity } = payload;
+    const item = player.inv.drop(slot, quantity || 1);
+
+    if (!item) {
+        return socket.emit('inventory_error', { message: 'Falha ao dropar item' });
+    }
+
+    console.log(`[Inventory] Item dropado: ${item.name} x${quantity || 1}`);
+
+    // TODO: Criar um objeto no mundo representando o item dropado
+    // Por enquanto, o item simplesmente desaparece
+
+    socket.emit('inventory_success', { message: 'Item dropado' });
+}
+
+// --- 9. ROTA DE DEBUG PARA INVENTÁRIO ---
+app.get('/debug/player/:socketId', (req, res) => {
+    const player = gameState.players[req.params.socketId];
+    if (!player) {
+        return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    res.json({
+        inventory: player.inv?.itens,
+        equipment: player.equip,
+        stats: player.stats
+    });
+});
 
 // --- INICIAR O SERVIDOR ---
 main();

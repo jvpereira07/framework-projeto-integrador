@@ -6,6 +6,10 @@ import sys
 import os
 import requests
 from OpenGL.GL import *
+import builtins # ADICIONE ESTA LINHA
+
+# Adiciona a flag global para identificar o modo online
+builtins.ONLINE_MODE = True # ADICIONE ESTA LINHA
 
 
 # Adiciona o diretório raiz ao path para encontrar os módulos
@@ -13,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from core.map import Map
 from core.resources import load_sprite_from_db, draw_text
 from utils.input import Input
-from assets.classes.components import InterfaceManager, Mouse, StatsBar
+from assets.classes.components import InterfaceManager, Mouse, StatsBar, Slot
 
 # --- FUNÇÕES DE ADAPTAÇÃO DA STATSBAR ---
 def get_stat_values_from_server(stats_bar_instance):
@@ -52,6 +56,136 @@ def patch_stats_bars(element):
         for child in element.children:
             patch_stats_bars(child)
 
+
+# --- ADAPTAÇÃO PARA DADOS DA REDE ---
+
+class NetworkItem:
+    """Classe simples para representar um item vindo da rede com os atributos esperados pela UI."""
+    def __init__(self, item_data):
+        if not item_data:
+            # Se os dados do item forem nulos, inicializa como um objeto vazio
+            self.name = ""
+            self.texture = None
+            self.quant = 0
+            self.description = ""
+            self.item_type = ""
+        else:
+            self.name = item_data.get('name')
+            self.texture = item_data.get('texture')
+            self.quant = item_data.get('quant')
+            self.description = item_data.get('description')
+            self.item_type = item_data.get('item_type')
+
+    def to_dict(self):
+        """Fornece um dicionário compatível com o InfoBox."""
+        return {
+            'name': self.name,
+            'quant': self.quant,
+            'description': self.description,
+            'item_type': self.item_type
+        }
+
+def update_inventory_display(interface_manager):
+    """Atualiza os slots do inventário com os dados do servidor."""
+    global game_state, my_player_id
+    
+    if not my_player_id or my_player_id not in game_state.get('players', {}):
+        return
+
+    player_data = game_state['players'][my_player_id]
+    inventory_data = player_data.get('inventory', [])
+    
+    # 🔍 DEBUG (comentar em produção)
+    # print(f"[DEBUG] Atualizando inventário. Total de itens: {len(inventory_data)}")
+    # for i, item in enumerate(inventory_data):
+    #     if item:
+    #         print(f"  Slot {i}: {item.get('name')} x{item.get('quant')} (texture: {item.get('texture')})")
+    
+    inventory_interface = interface_manager.get_interface("inventory")
+    if not inventory_interface or not hasattr(inventory_interface, 'slots_cache'):
+        return
+
+    for slot_id, slot_widget in inventory_interface.slots_cache.items():
+        item_data = inventory_data[slot_id] if slot_id < len(inventory_data) else None
+        
+        # Cria um objeto compatível com a UI para o item
+        network_item = NetworkItem(item_data) if item_data else None
+        
+        # Define o item no widget do slot, se o item mudou para evitar recargas desnecessárias
+        if not hasattr(slot_widget, '_last_item_id') or getattr(slot_widget, '_last_item_id', None) != (network_item.texture if network_item else None):
+             slot_widget.set_item(network_item)
+             slot_widget._last_item_id = network_item.texture if network_item else None
+
+
+# --- HANDLER DE AÇÕES DE INVENTÁRIO ---
+class InventoryActionHandler:
+    """Gerencia a seleção de itens e as ações de clique no inventário."""
+    
+    def __init__(self, sio):
+        self.sio = sio
+        self._selected_slot = None
+        self._current_item = None
+    
+    @property
+    def selected_slot(self):
+        return self._selected_slot
+        
+    @selected_slot.setter
+    def selected_slot(self, value):
+        print(f"[LOG] InventoryActionHandler.selected_slot foi chamado com o valor: {value}")
+        self._selected_slot = value
+        self._current_item = None
+        
+        try:
+            inventory = game_state['players'][my_player_id].get('inventory', [])
+            if value is not None and 0 <= value < len(inventory):
+                self._current_item = inventory[value]
+                print(f"[LOG] Item selecionado no slot {value}: {self._current_item}")
+            else:
+                print(f"[LOG] Slot {value} está vazio ou fora dos limites do inventário.")
+        except (KeyError, IndexError):
+            print("[LOG] Aviso: game_state ou player_id ainda não disponíveis ao selecionar slot.")
+            pass
+    
+    # --- Ações que enviam comandos ao servidor ---
+    def use_item(self):
+        if self._selected_slot is not None:
+            payload = {'action': 'use_item', 'slot': self._selected_slot}
+            self.sio.emit('inventory_action', payload)
+            print(f"[AÇÃO] Enviado comando 'use_item' para o slot {self._selected_slot}")
+
+    def equip_item(self):
+        if self._selected_slot is not None:
+            payload = {'action': 'equip_item', 'slot': self._selected_slot}
+            self.sio.emit('inventory_action', payload)
+            print(f"[AÇÃO] Enviado comando 'equip_item' para o slot {self._selected_slot}")
+
+    # --- Funções de verificação ---
+    def can_use_item(self):
+        """Verifica se o item selecionado é um consumível."""
+        print("[LOG] Verificando 'can_use_item'...")
+        if not (self._current_item and isinstance(self._current_item, dict)):
+            print("[LOG] Resultado can_use_item: False (item nulo ou inválido)")
+            return False
+        item_type = self._current_item.get('item_type', '').lower()
+        
+        # --- MUDANÇA CRÍTICA AQUI ---
+        # A comparação agora é com a string em minúsculas 'consumable'
+        result = item_type == 'consumable' 
+        
+        print(f"[LOG] Tipo do item: '{item_type}'. Resultado can_use_item: {result}")
+        return result
+        
+    def can_equip_item(self):
+        """Verifica se o item selecionado é equipável (Equipment ou Weapon)."""
+        print("[LOG] Verificando 'can_equip_item'...")
+        if not (self._current_item and isinstance(self._current_item, dict)):
+            print("[LOG] Resultado can_equip_item: False (item nulo ou inválido)")
+            return False
+        item_type = self._current_item.get('item_type', '').lower()
+        result = item_type in ['equipment', 'weapon']
+        print(f"[LOG] Tipo do item: '{item_type}'. Resultado can_equip_item: {result}")
+        return result
 
 # --- 1. CONFIGURAÇÃO DA REDE ---
 sio = socketio.Client(engineio_logger=False, logger=False)
@@ -132,6 +266,22 @@ def game_state(data):
     global game_state
     game_state = data
 
+# Eventos de resposta do inventário
+@sio.event
+def inventory_success(data):
+    message = data.get('message', '')
+    print(f"[Inventory] Sucesso: {message}")
+    # Reseta o slot selecionado após uma ação bem-sucedida
+    if hasattr(client, 'inventory_handler'):
+        client.inventory_handler.selected_slot = None
+
+@sio.event
+def inventory_error(data):
+    message = data.get('message', '')
+    print(f"[Inventory] Erro: {message}")
+    # Opcional: tocar um som de erro ou mostrar uma mensagem visual
+    # para o usuário quando a ação falhar
+
 # --- 3. CLASSE PRINCIPAL DO CLIENTE ---
 class GameClient:
     def __init__(self, config_path='saves/config.yaml'):
@@ -166,16 +316,120 @@ class GameClient:
         
         self.interface_manager = InterfaceManager(self.screen_size[0], self.screen_size[1])
         self.interface_manager.load_interface("hud", "gamehud.xml")
-        self.interface_manager.show_interface("hud")
+        self.interface_manager.load_interface("inventory", "inventory.xml") # Carrega a UI do inventário
+        
+        self.interface_manager.show_interface("hud") # Começa com o HUD
+        self.last_ui_state = 'hud'
 
-        # Adapta as StatsBars da interface para usarem os dados do servidor
-        hud_interface = self.interface_manager.get_interface("hud")
-        if hud_interface:
-            for element in hud_interface.elements:
-                patch_stats_bars(element)
+        # Cacheia os slots do inventário para atualizações rápidas
+        self.cache_inventory_slots()
+
+        # 🔧 NOVO: Handler de inventário
+        global sio
+        self.inventory_handler = InventoryActionHandler(sio)
+        
+        # Conecta os eventos da UI ao handler
+        inventory_interface = self.interface_manager.get_interface("inventory")
+        if inventory_interface:
+            self._setup_inventory_events(inventory_interface)
+
+        # Adapta as StatsBars de todas as interfaces para usarem os dados do servidor
+        for iface_name in self.interface_manager.list_interfaces():
+            iface = self.interface_manager.get_interface(iface_name)
+            if iface:
+                patch_stats_bars(iface)
+                for element in iface.elements:
+                    patch_stats_bars(element)
         
         self.running = True
 
+    def cache_inventory_slots(self):
+        """Encontra e armazena todos os widgets de Slot da interface de inventário."""
+        inventory_interface = self.interface_manager.get_interface("inventory")
+        if not inventory_interface:
+            return
+        
+        inventory_interface.slots_cache = {}
+        
+        def find_slots_recursive(elements):
+            for element in elements:
+                if isinstance(element, Slot) and element.slot_id is not None:
+                    inventory_interface.slots_cache[element.slot_id] = element
+                if hasattr(element, 'children') and element.children:
+                    find_slots_recursive(element.children)
+        
+        find_slots_recursive(inventory_interface.elements)
+        print(f"Cache de slots do inventário criado com {len(inventory_interface.slots_cache)} slots.")
+
+    # VERSÃO FINAL E CORRIGIDA do método _setup_inventory_events
+
+    def _setup_inventory_events(self, inventory_interface):
+        """Conecta os slots de inventário aos eventos de clique e configura os botões de ação."""
+        if not hasattr(inventory_interface, 'slots_cache'):
+            return
+
+        def find_element_by_action(elements, action_name_to_find):
+            for element in elements:
+                if hasattr(element, 'action_name') and element.action_name == action_name_to_find:
+                    return element
+                if hasattr(element, 'children') and element.children:
+                    found = find_element_by_action(element.children, action_name_to_find)
+                    if found:
+                        return found
+            return None
+
+        use_button = find_element_by_action(inventory_interface.elements, 'item_use')
+        equip_button = find_element_by_action(inventory_interface.elements, 'item_equip')
+        drop_button = find_element_by_action(inventory_interface.elements, 'item_drop') # Botão Drop
+
+        if use_button:
+            use_button.action = self.inventory_handler.use_item
+            use_button.visible = False 
+            
+        if equip_button:
+            equip_button.action = self.inventory_handler.equip_item
+            equip_button.visible = False
+        
+        if drop_button:
+            # A ação de drop ainda pode ser a antiga, ou podemos criar uma no handler
+            # Por agora, vamos apenas controlar a visibilidade
+            drop_button.visible = False
+        
+        for slot_id, slot_widget in inventory_interface.slots_cache.items():
+            
+            def create_click_handler(slot_index):
+                def handler():
+                    self.inventory_handler.selected_slot = slot_index
+                    
+                    # Se o slot estiver vazio, esconde todos os botões
+                    if self.inventory_handler._current_item is None:
+                        if use_button: use_button.visible = False
+                        if equip_button: equip_button.visible = False
+                        if drop_button: drop_button.visible = False
+                        return
+
+                    # Se tem item, mostra o botão de drop
+                    if drop_button:
+                        drop_button.visible = True
+                    
+                    can_use = self.inventory_handler.can_use_item()
+                    can_equip = self.inventory_handler.can_equip_item()
+
+                    if use_button:
+                        use_button.visible = can_use
+                    if equip_button:
+                        equip_button.visible = can_equip
+                    
+                    if can_use and equip_button:
+                        equip_button.visible = False
+                    if can_equip and use_button:
+                        use_button.visible = False
+                return handler
+
+            slot_widget.action = create_click_handler(slot_id)
+            slot_widget.on_drag_start = None
+            slot_widget.on_drag_end = None
+            
     def run(self):
         while self.running:
             # --- LÓGICA DE INPUT ---
@@ -185,8 +439,32 @@ class GameClient:
             
             # Envia os inputs para o servidor
             if sio.connected:
-                keys_to_send = {k: v for k, v in self.input.keys.items() if v}
-                sio.emit('player_input', {'keys': keys_to_send})
+                # Prepara o payload com as teclas pressionadas
+                payload = {
+                    'keys': {k: v for k, v in self.input.keys.items() if v}
+                }
+                
+                # Adiciona dados do mouse se o botão esquerdo estiver pressionado
+                if self.input.get_mouse_button(0):
+                    mx, my = self.input.get_mouse_pos()
+                    
+                    # Converte a posição do mouse para coordenadas do mundo
+                    # O servidor usa essas coordenadas para calcular a direção do ataque
+                    world_mx, world_my = mx, my # Fallback inicial
+                    if my_player_id and my_player_id in game_state.get('players', {}):
+                        player_data = game_state['players'][my_player_id]
+                        camera_x = player_data['x'] - (self.screen_size[0] / (2 * self.zoom))
+                        camera_y = player_data['y'] - (self.screen_size[1] / (2 * self.zoom))
+                        world_mx = camera_x + (mx / self.zoom)
+                        world_my = camera_y + (my / self.zoom)
+
+                    payload['mouse'] = {
+                        'button': 1,
+                        'x': world_mx,
+                        'y': world_my
+                    }
+                
+                sio.emit('player_input', payload)
 
             # --- LÓGICA DE RENDERIZAÇÃO ---
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -194,6 +472,7 @@ class GameClient:
 
             # Calcula a posição da câmera baseada no nosso jogador
             camera_x, camera_y = 0, 0
+            player_data = None # Inicializa para garantir que a variável exista
             if my_player_id and my_player_id in game_state.get('players', {}):
                 player_data = game_state['players'][my_player_id]
                 camera_x = player_data['x'] - (self.screen_size[0] / (2 * self.zoom))
@@ -205,7 +484,19 @@ class GameClient:
             # Renderiza todas as entidades recebidas do servidor
             self.render_entities(game_state.get('players', {}), camera_x, camera_y)
             self.render_entities(game_state.get('mobs', {}), camera_x, camera_y)
+            self.render_entities(game_state.get('projectiles', {}), camera_x, camera_y)
             
+            # --- LÓGICA DE ATUALIZAÇÃO DA UI ---
+            if player_data:
+                current_ui_state = player_data.get('ui_state', 'hud')
+                if current_ui_state != self.last_ui_state:
+                    self.interface_manager.show_interface(current_ui_state)
+                    self.last_ui_state = current_ui_state
+                
+                # Se o inventário estiver aberto, atualiza os slots
+                if current_ui_state == 'inventory':
+                    update_inventory_display(self.interface_manager)
+
             # Renderiza a UI
             mx, my = self.input.get_mouse_pos()
             self.interface_manager.update(mx, my, self.input.get_mouse_button(0))
@@ -239,7 +530,36 @@ class GameClient:
                 if sprite:
                     screen_x = (entity_data['x'] - camera_x) * self.zoom
                     screen_y = (entity_data['y'] - camera_y) * self.zoom
-                    sprite.draw(screen_x, screen_y, anim_row, self.zoom)
+
+                    # --- LÓGICA DA ANIMAÇÃO DA ARMA (COM SINCRONIZAÇÃO) ---
+                    weapon_anim_data = entity_data.get('weapon_anim')
+                    if weapon_anim_data:
+                        weapon_sprite_id = weapon_anim_data.get('texture_id')
+                        weapon_anim_row = weapon_anim_data.get('anim_row')
+
+                        if weapon_sprite_id is not None:
+                            weapon_sprite = self.sprite_cache.get(weapon_sprite_id)
+                            if weapon_sprite is None and weapon_sprite_id not in self.sprite_cache:
+                                weapon_sprite = load_sprite_from_db(weapon_sprite_id)
+                                self.sprite_cache[weapon_sprite_id] = weapon_sprite
+                            
+                            if weapon_sprite:
+                                # SINCRONIZA O FRAME DA ARMA COM O DO JOGADOR
+                                weapon_sprite.numFrame = sprite.numFrame
+                                
+                                # Desenha o jogador primeiro
+                                sprite.draw(screen_x, screen_y, anim_row, self.zoom)
+                                # Desenha a arma por cima
+                                weapon_sprite.draw(screen_x, screen_y, weapon_anim_row, self.zoom)
+                            else:
+                                # Se a arma não tiver sprite, desenha só o jogador
+                                sprite.draw(screen_x, screen_y, anim_row, self.zoom)
+                        else:
+                            # Se não houver dados da arma, desenha só o jogador
+                            sprite.draw(screen_x, screen_y, anim_row, self.zoom)
+                    else:
+                        # Se não estiver atacando, desenha só o jogador
+                        sprite.draw(screen_x, screen_y, anim_row, self.zoom)
 
 # --- 4. PONTO DE ENTRADA ---
 if __name__ == '__main__':
