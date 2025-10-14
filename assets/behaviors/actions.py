@@ -980,6 +980,166 @@ def musicAttack(entity, game_map):
         # Em caso de erro, apenas retorna sem crashar
         print(f"Erro ao criar projétil musical: {e}")
         return
+def laserAttack(entity, game_map):
+    """
+    Ataque de laser em rajada canalizada por 2s.
+    - Dispara exatamente 60 projéteis ao longo de 2s (30/s) com espaçamento uniforme
+    - Mira no player mais próximo, mesma lógica do musicAttack
+    - 20s de cooldown interno entre rajadas
+    """
+    import time
+
+    # Importa classes necessárias
+    try:
+        from core.entity import PControl, PrjControl
+        from assets.classes.entities import Projectile
+    except ImportError:
+        try:
+            import main
+            PControl = main.PControl
+            PrjControl = main.PrjControl
+            from assets.classes.entities import Projectile
+        except Exception:
+            return
+
+    # Parâmetros do ataque
+    BURST_DURATION = 2.0
+    TOTAL_SHOTS = 60
+    FIRE_INTERVAL = BURST_DURATION / TOTAL_SHOTS  # ~0.0333s entre disparos (30/s)
+    COOLDOWN_BETWEEN_BURSTS = 20.0
+    LASER_PROJECTILE_ID = 4  # ID do projétil (reutiliza o musical por segurança)
+
+    now = time.time()
+
+    # Se a rajada não está ativa, verifica cooldown e inicia
+    if not getattr(entity, '_laser_active', False):
+        next_ok = getattr(entity, '_laser_cooldown_until', 0.0)
+        if now < next_ok:
+            return  # ainda em cooldown entre rajadas
+
+        # Inicia nova rajada
+        entity._laser_active = True
+        entity._laser_burst_end_at = now + BURST_DURATION
+        entity._laser_shots_fired = 0
+        entity._laser_next_time = 0.0  # permite disparar imediatamente no primeiro tick
+
+        # Feedback de animação durante a canalização
+        try:
+            entity.attacking = True
+            if hasattr(entity, 'texture'):
+                entity.texture.numFrame = 0
+            entity._attack_end_time = now + BURST_DURATION
+        except Exception:
+            pass
+
+    # Se a rajada está ativa, gerencia disparos periódicos até o fim
+    if getattr(entity, '_laser_active', False):
+        # Se terminou a janela de 2s OU já disparou todos os 60, encerra e agenda cooldown
+        if now >= getattr(entity, '_laser_burst_end_at', 0.0) or \
+           getattr(entity, '_laser_shots_fired', 0) >= TOTAL_SHOTS:
+            entity._laser_active = False
+            entity._laser_cooldown_until = now + COOLDOWN_BETWEEN_BURSTS
+            return
+
+        # ----- Cálculo de alvo/direção (igual musicAttack) -----
+        # Verifica se entity tem os atributos necessários
+        if not hasattr(entity, 'posx') or not hasattr(entity, 'posy'):
+            return
+
+        players = getattr(PControl, 'Players', [])
+
+        closest_player = None
+        min_distance = float('inf')
+
+        entity_center_x = entity.posx + getattr(entity, 'sizex', 32) / 2
+        entity_center_y = entity.posy + getattr(entity, 'sizey', 32) / 2
+
+        for player in players:
+            if not hasattr(player, 'posx') or not hasattr(player, 'posy'):
+                continue
+
+            player_center_x = player.posx + getattr(player, 'sizex', 32) / 2
+            player_center_y = player.posy + getattr(player, 'sizey', 32) / 2
+
+            distance = math.sqrt((entity_center_x - player_center_x)**2 + 
+                               (entity_center_y - player_center_y)**2)
+
+            if distance < min_distance:
+                min_distance = distance
+                closest_player = player
+
+        # Define direção: mira no player mais próximo se houver; caso contrário usa facing
+        if closest_player:
+            target_x = closest_player.posx + getattr(closest_player, 'sizex', 32) / 2
+            target_y = closest_player.posy + getattr(closest_player, 'sizey', 32) / 2
+            dx = target_x - entity_center_x
+            dy = target_y - entity_center_y
+        else:
+            face = getattr(entity, 'facing', 'right')
+            if face == 'left':
+                dx, dy = -1, 0
+            elif face == 'right':
+                dx, dy = 1, 0
+            elif face == 'up':
+                dx, dy = 0, -1
+            else:
+                dx, dy = 0, 1
+
+        # Normaliza a direção
+        dist = math.sqrt(dx*dx + dy*dy)
+        if dist > 0:
+            dir_x = dx / dist
+            dir_y = dy / dist
+        else:
+            dir_x = 1
+            dir_y = 0
+
+        # Gating por "próximo tempo" e contador (mesma lógica do ring):
+        # dispara quantos necessários para alcançar o tempo atual, respeitando TOTAL_SHOTS
+        shots_fired = getattr(entity, '_laser_shots_fired', 0)
+        next_time = getattr(entity, '_laser_next_time', 0.0)
+        if now + 1e-6 < next_time:
+            return  # ainda não é hora do próximo disparo
+
+        # Enquanto estivermos atrasados e houver tiros a disparar, crie projéteis
+        while shots_fired < TOTAL_SHOTS and now + 1e-6 >= next_time:
+            try:
+                spawn_offset = 12
+                spawn_x = entity_center_x + dir_x * spawn_offset
+                spawn_y = entity_center_y + dir_y * spawn_offset
+                p = Projectile(
+                    id=0,
+                    x=spawn_x,
+                    y=spawn_y,
+                    idProjectile=LASER_PROJECTILE_ID,
+                    dirx=dir_x,
+                    diry=dir_y,
+                    id_owner=entity.id,
+                    type_owner=entity.type
+                )
+                # Dano escalado
+                mob_attack = getattr(entity.stats, 'damage', 1) if hasattr(entity, 'stats') else 1
+                p.damage = getattr(p, 'damage', 1) * mob_attack
+                PrjControl.add(p)
+                # Avança agendamento e contador
+                shots_fired += 1
+                next_time = (next_time if next_time > 0 else now) + FIRE_INTERVAL
+            except Exception:
+                # Se falhar um disparo, tenta continuar com os demais
+                continue
+
+        # Persiste novo estado de agenda/contador
+        entity._laser_shots_fired = shots_fired
+        entity._laser_next_time = next_time
+
+        # Atualiza facing conforme direção do último cálculo
+        try:
+            if abs(dx) > abs(dy):
+                entity.facing = "right" if dx > 0 else "left"
+            else:
+                entity.facing = "down" if dy > 0 else "up"
+        except Exception:
+            pass
 def expanding_ring_attack(entity, game_map):
     """
     Dispara um ataque em anel em 3 pulsos (12 projéteis por pulso, total 36 direções),
@@ -1086,6 +1246,8 @@ actions = {
     "aggroPlayer": aggroPlayer,
     "biteAttack": biteAttack,
     "musicAttack": musicAttack,
+    "laserAttack": laserAttack,
+    "lazerAttack": laserAttack,
     "expanding_ring_attack": expanding_ring_attack,
 }
 
