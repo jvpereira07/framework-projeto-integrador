@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 // --- CONFIGURAÇÃO DO CAMINHO DO BANCO DE DADOS ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Navega duas vezes para cima (de /server/ para a raiz do projeto)
-const dbPath = path.join(__dirname, '..', 'assets', 'data', 'data.db');
+// O banco de dados está na pasta server/
+const dbPath = path.join(__dirname, 'data-server.db');
 
 let db;
 

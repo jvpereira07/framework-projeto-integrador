@@ -843,27 +843,31 @@ class XMLInterface:
                 print(f"Erro ao atualizar texto do InfoBox: {e}")
 
         # Atualiza visibilidade dos botões de ação conforme regras
-        try:
-            from assets.classes.itens import Consumable, KeyItem, Equipment, Weapon
-            # Esconde tudo se não há item
-            if item is None:
-                self._set_actions_visibility(drop=False, equip=False, unequip=False, use=False)
-                return
-            # Seleção vinda de slot de equipamento
-            if source == 'equipment':
-                self._set_actions_visibility(drop=True, equip=False, unequip=True, use=False)
-                return
-            # Seleção vinda do inventário
-            if isinstance(item, (Weapon, Equipment)):
-                self._set_actions_visibility(drop=True, equip=True, unequip=False, use=False)
-            elif isinstance(item, (KeyItem, Consumable)):
-                self._set_actions_visibility(drop=True, equip=False, unequip=False, use=True)
-            else:
-                # Desconhecido: só permite descartar
-                self._set_actions_visibility(drop=True, equip=False, unequip=False, use=False)
-        except Exception as e:
-            print(f"Erro ao atualizar visibilidade dos botões: {e}")
+        # Verifica se estamos no modo online. Se sim, PULA a lógica de visibilidade.
+        import builtins
+        ONLINE_MODE = getattr(builtins, 'ONLINE_MODE', False)
+        
+        if not ONLINE_MODE:
+            # Atualiza visibilidade dos botões de ação conforme regras (SÓ NO MODO OFFLINE)
+            try:
+                from assets.classes.itens import Consumable, KeyItem, Equipment, Weapon
+                if item is None:
+                    self._set_actions_visibility(drop=False, equip=False, unequip=False, use=False)
+                    return
 
+                if source == 'equipment':
+                    self._set_actions_visibility(drop=True, equip=False, unequip=True, use=False)
+                    return
+
+                if isinstance(item, (Weapon, Equipment)):
+                    self._set_actions_visibility(drop=True, equip=True, unequip=False, use=False)
+                elif isinstance(item, (KeyItem, Consumable)):
+                    self._set_actions_visibility(drop=True, equip=False, unequip=False, use=True)
+                else:
+                    self._set_actions_visibility(drop=True, equip=False, unequip=False, use=False)
+            except Exception as e:
+                print(f"Erro ao atualizar visibilidade dos botões: {e}")
+                
     # ====== Botões de ação (drop/equip/unequip/use) ======
     def _cache_action_buttons(self):
         self._action_buttons = {
