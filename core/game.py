@@ -8,6 +8,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from core.entity import BrControl, EControl as EntityTick, PControl as PlayerTick, PrjControl as PrjTick
 from core.event import EventControl as EventTick
+from core.event import RaidControl
 from core.event import Event
 from core.map import Map
 from assets.classes.entities import Player, save_player,Breakable
@@ -66,6 +67,26 @@ class Game:
         self.map = Map('assets/data/map.json','assets/images/layers/basic.png')
         # Instancia o player no novo PlayerController
         PlayerTick.add(Player(1,"saves/player.json",load_sprite_from_db(8)))
+        
+        # Carregar events do banco
+        EventTick.load()
+        
+        # Condição para iniciar o raid: player perto de (1174,192)
+        def condition_raid_test():
+            player = PlayerTick.get_main_player()
+            if player:
+                dx = player.posx - 1174
+                dy = player.posy - 192
+                distance = (dx**2 + dy**2)**0.5
+                return distance < 100  # 100 pixels de raio
+            return False
+        
+        # Evento de teste para Combat_lockRoom com 3 raids
+        
+        
+        # Salvar events no banco
+        
+        
         # Configura exibição de hitboxes a partir do config
         try:
             from core.entity import set_show_hitboxes
@@ -75,15 +96,13 @@ class Game:
             pass
         self.mouse = Mouse(32, 32, 12,11)
         pygame.mouse.set_visible(False)
-        vaso = Breakable(1,100,100,32,32,load_sprite_from_db(29),1,3)
-        vaso2 = Breakable(2,300,100,32,32,load_sprite_from_db(29),1,4)
+        # Prefer loading breakable properties (size, texture, durability, drop) from DB
+        # If the Breakbles table or the record is missing, Breakable class falls back to defaults.
+        vaso = Breakable(1, 1100, 400, breakable_id=3)
+        vaso2 = Breakable(2, 300, 100, breakable_id=4)
         from core.entity import BrControl
         BrControl.add(vaso)
         BrControl.add(vaso2)
-        ##event = Event(lambda: True,"spawn_rat","spawn",{'num_mob':1,'id_mob':5,'x':150,'y':150},5,True)
-        ##EventTick.add(event)
-        
-        # Sistema de captura de ações dos botões
         self.action_capture = ActionCapture()
         sys.stdout = self.action_capture
         
@@ -102,7 +121,7 @@ class Game:
         self.game_state = "playing"  # menu, playing, inventory
         self.interface_manager.show_interface("hud")
         from assets.classes.entities import Mob
-        m = Mob(1,100,100,4)
+        m = Mob(1,5032,2000,4)
         EntityTick.add(m)
         from assets.classes.itens import get_item_from_db
         item = get_item_from_db(1)
@@ -147,6 +166,7 @@ class Game:
                     EntityTick.run(self.map)
                     PlayerTick.run(self.map)
                     EventTick.run(time.time())
+                    RaidControl.run()
                     PrjTick.run(self.map)
                     BrControl.run( self.map)
                     ItControl.run(self.map)

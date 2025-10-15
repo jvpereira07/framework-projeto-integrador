@@ -206,7 +206,11 @@ def control(input,player,map):
         player.moving = True
     else:
         player.moving = False
-    if input.get_key_pressed("dash"):
+    
+    # Sprint: segurar espaço enquanto se move e tem stamina
+    player.sprinting = player.moving and input.get_key("dash") and player.stats.stamina > 0
+    
+    if input.get_key_double_pressed("dash"):
         player.dash()
     if input.get_key_pressed("key_1"):
         player.active_hand = 1
@@ -214,7 +218,7 @@ def control(input,player,map):
         player.active_hand = 2
     
     # Sistema de combate com direcionamento do player
-    if input.get_mouse_button(0):
+    if input.get_mouse_button(0) and not player.dashing:
         # Calcula a direção do mouse em relação ao player
         # Considera que o player está no centro da tela
         try:

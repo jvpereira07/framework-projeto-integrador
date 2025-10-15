@@ -185,6 +185,7 @@ function gameLoop() {
         const player = gameState.players[id];
         handlePlayerInput(player, map, gameState);
         player.run(map);
+        setInterval(gameLoop, 16);
     }
 
     // Atualiza todos os mobs
@@ -198,6 +199,7 @@ function gameLoop() {
 
     // Envia o estado atualizado para todos os clientes
     io.emit('game_state', getSanitizedGameState());
+    setInterval(gameLoop, 16);
 }
 
 // --- 6. LÓGICA DE ATUALIZAÇÃO ---

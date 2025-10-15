@@ -1,17 +1,17 @@
 {
     "id": 1,
     "position": {
-        "x": 193,
-        "y": 205
+        "x": 1418,
+        "y": 550
     },
     "stats": {
-        "hp": 36.0,
+        "hp": 6.0,
         "maxHp": 150,
         "regenHp": 0.5,
         "mana": 100,
         "maxMana": 100,
         "regenMana": 0.3,
-        "stamina": 60,
+        "stamina": 80,
         "maxStamina": 80,
         "regenStamina": 0.4,
         "damage": 0.5,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 2289,
+        "quant": 2486,
         "inv": [
             {
                 "item_type": "Consumable",
@@ -38,7 +38,7 @@
                 "mana": 100.0,
                 "stamina": 0.0,
                 "effect": "",
-                "quant": 94
+                "quant": 100
             },
             {
                 "item_type": "Consumable",
@@ -50,19 +50,7 @@
                 "mana": 0,
                 "stamina": 50.0,
                 "effect": "0",
-                "quant": 470
-            },
-            {
-                "item_type": "Consumable",
-                "name": "Poção de cura",
-                "texture": 9,
-                "description": "Restaura 100 pontos de vida",
-                "id": 1,
-                "heal": 100.0,
-                "mana": 0,
-                "stamina": 0,
-                "effect": "",
-                "quant": 4
+                "quant": 452
             }
         ]
     },

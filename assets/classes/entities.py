@@ -224,6 +224,7 @@ class Player(Entity):
         self.direction = "down"
         self.moving = False
         self.dashing = False
+        self.sprinting = False
 
 
     def loadInv(self, invData):
@@ -398,7 +399,7 @@ class Player(Entity):
 
     def walk(self, dir, map):
         aceleracao = self.stats.ace
-        vel = self.stats.speed
+        vel = self.stats.speed * (0.8 if self.attacking else 1.0) * (1.5 if self.sprinting else 1.0)
 
         ax, ay = 0, 0
         movimentos = {
@@ -448,6 +449,8 @@ class Player(Entity):
             self.moving = False
 
     def atack(self, weapon, mousex, mousey):
+        if self.dashing:
+            return
         
         dirx = mousex - self.posx
         diry = mousey - self.posy
@@ -479,14 +482,28 @@ class Player(Entity):
         return (agora - self.last_dash_time) >= 1.0
     
     def control_animation(self):
-        if self.attacking:
+        if self.attacking and self.moving:
+            self.anim = {
+                "right": 20,
+                "left": 21,
+                "down": 22,
+                "up": 23
+            }.get(self.direction, 20)
+        elif self.attacking:
+            self.anim = {
+                "right": 16,
+                "left": 17,
+                "down": 18,
+                "up": 19
+            }.get(self.direction, 16)
+        elif self.dashing:
             self.anim = {
                 "right": 12,
                 "left": 13,
                 "down": 14,
                 "up": 15
             }.get(self.direction, 12)
-        elif self.dashing:
+        elif self.sprinting:
             self.anim = {
                 "right": 8,
                 "left": 9,
@@ -499,14 +516,14 @@ class Player(Entity):
                 "left": 5,
                 "down": 6,
                 "up": 7
-            }.get(self.direction, 0)
+            }.get(self.direction, 4)
         else:
             self.anim = {
                 "right": 0,
                 "left": 1,
                 "down": 2,
                 "up": 3
-            }.get(self.direction, 4)
+            }.get(self.direction, 0)
     
     def run(self,map):
         # Detecta transições de ataque para resetar o índice de frame
@@ -558,6 +575,12 @@ class Player(Entity):
             self.attacking = False
             
         self.dashing = not self.cooldown_dash()
+        
+        # Sprint logic
+        if self.sprinting and self.stats.stamina > 0:
+            self.stats.stamina -= 0.1
+        if self.stats.stamina <= 0:
+            self.sprinting = False
         self.control_animation()
 
         # Aplica resets de frame nas transições de ataque (início e fim)
@@ -611,14 +634,72 @@ class ItemEntity(Entity):
             self.posy + self.sizey > other.posy
         )  
 class Breakable(Entity):
-    def __init__(self, id, x, y, sizex, sizey, texture, durability, drop):
-        super().__init__(id, x, y, sizex, sizey, texture,"breakable")
-        self.durability = durability
-        self.drop = get_item_from_db(drop)
+    def __init__(self, id, x, y, sizex=None, sizey=None, texture=None, durability=None, drop=None, breakable_id=None):
+        """Constructor supports two modes:
+        - Explicit: Breakable(id, x, y, sizex, sizey, texture, durability, drop)
+        - DB load: Breakable(id,x,y, breakable_id=DB_ID) -> loads properties from 'Breakbles' table
+        """
+        # If breakable_id provided, load properties from DB and override missing values
+        if breakable_id is not None:
+            data = self.load(breakable_id)
+            if data:
+                # Do NOT override x/y provided by the system; load only size/texture/durability/drop
+                sizex = data.get('sizex') or data.get('size_x') or data.get('width') or sizex or 16
+                sizey = data.get('sizey') or data.get('size_y') or data.get('height') or sizey or 16
+                # texture id might be named like Creature table
+                texture_id = data.get('idTextura') or data.get('id_textura') or data.get('texture_id') or None
+                texture = load_sprite_from_db(texture_id) if texture_id is not None else texture
+                durability = data.get('durability') or data.get('hp') or durability or 1
+                drop = data.get('drop') or data.get('drop_item') or data.get('item_id') or drop
+            else:
+                # fallback defaults
+                x = x or 0
+                y = y or 0
+                sizex = sizex or 16
+                sizey = sizey or 16
+                texture = texture
+                durability = durability or 1
+                drop = drop
+
+        # Ensure required numeric defaults
+        if sizex is None:
+            sizex = 16
+        if sizey is None:
+            sizey = 16
+        if x is None:
+            x = 0
+        if y is None:
+            y = 0
+
+        super().__init__(id, x, y, sizex, sizey, texture, "breakable")
+        self.durability = durability if durability is not None else 1
+        # normalize drop into an Item instance if possible
+        self.drop = get_item_from_db(drop) if drop is not None else None
+
+    def load(self, breakable_id):
+        """Load a breakable record from the Breakbles table and return a dict of column->value."""
+        conn = sqlite3.connect('assets/data/data.db')
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM Breakbles WHERE id = ?", (breakable_id,))
+        except Exception:
+            # Table might not exist or query invalid
+            conn.close()
+            return None
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return None
+        cols = [d[0] for d in cursor.description]
+        data = dict(zip(cols, row))
+        conn.close()
+        return data
+
     def take_damage(self, amount):
         self.durability -= amount
         if self.durability <= 0:
             self.destroy()
+
     def destroy(self):
         from core.entity import BrControl
         BrControl.rem(self.id)
@@ -626,6 +707,7 @@ class Breakable(Entity):
             from core.entity import ItControl
             item_entity = ItemEntity(0, self.posx, self.posy, self.drop)
             ItControl.add(item_entity)
+
     def check_collision(self, other):
         return (
             self.posx < other.posx + other.sizex and
@@ -680,13 +762,13 @@ class Breakable(Entity):
         for entity in PControl.Players + PrjControl.Projectiles:
             # Primeiro verifica se o player está fazendo dash próximo ao vaso
             if isinstance(entity, Player) and self.check_dash_proximity(entity):
-                self.take_damage(self.durability)
+                self.take_damage(1)
                 continue
                 
             if self.check_collision(entity):
                 if isinstance(entity, Player):
                     if entity.dashing or entity.attacking:
-                        self.take_damage(self.durability)
+                        self.take_damage(1)
                     else:
                         # Para a velocidade atual
                         entity.velx = 0

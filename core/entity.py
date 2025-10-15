@@ -324,7 +324,10 @@ class PControl:
                     except Exception:
                         pass
                     # Aplica o mesmo filtro de cor na arma se o player estiver tomando dano
-                    weapon_texture.draw(screen_x, screen_y, player.anim - 12, zoom, color_filter)
+                    if(player.moving and player.attacking):
+                        weapon_texture.draw(screen_x, screen_y, (player.anim - 20), zoom, color_filter)
+                    else:
+                        weapon_texture.draw(screen_x, screen_y, player.anim - 16, zoom, color_filter)
 
             # Desenha a hitbox do player (se habilitado)
             if SHOW_HITBOXES:
@@ -346,6 +349,7 @@ class BrControl:
     def add(e):
         e.id = len(BrControl.Breakables) + 1
         BrControl.Breakables.append(e)
+        return e.id  # Retorna o ID atribuído
 
     def rem(id):
         br_remover = None
