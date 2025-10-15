@@ -19,6 +19,72 @@ from core.resources import load_sprite_from_db, draw_text
 from utils.input import Input
 from assets.classes.components import InterfaceManager, Mouse, StatsBar, Slot
 
+class NetworkPlayer:
+    """Gerencia o estado e a animação de um jogador da rede."""
+    def __init__(self, sprite_id):
+        self.sprite = load_sprite_from_db(sprite_id)
+        self.x = 0
+        self.y = 0
+        self.direction = "down"
+        self.moving = False
+        self.attacking = False
+        self.dashing = False
+        self.anim_row = 0
+        self.weapon_anim_data = None
+
+    def update_state(self, entity_data):
+        """Atualiza o estado do jogador com os dados recebidos do servidor."""
+        self.x = entity_data.get('x', self.x)
+        self.y = entity_data.get('y', self.y)
+        self.direction = entity_data.get('direction', self.direction)
+        self.moving = entity_data.get('moving', self.moving)
+        self.attacking = entity_data.get('attacking', self.attacking)
+        self.dashing = entity_data.get('dashing', self.dashing)
+        self.weapon_anim_data = entity_data.get('weapon_anim')
+        self._control_animation()
+
+    def _control_animation(self):
+        """Define a linha de animação com base no estado atual."""
+        if self.attacking:
+            self.anim_row = {"right": 12, "left": 13, "down": 14, "up": 15}.get(self.direction, 12)
+        elif self.dashing:
+            self.anim_row = {"right": 8, "left": 9, "down": 10, "up": 11}.get(self.direction, 8)
+        elif self.moving:
+            self.anim_row = {"right": 4, "left": 5, "down": 6, "up": 7}.get(self.direction, 0)
+        else:
+            self.anim_row = {"right": 0, "left": 1, "down": 2, "up": 3}.get(self.direction, 4)
+
+    def draw(self, camera_x, camera_y, zoom, sprite_cache):
+        """Desenha o jogador e sua arma (se houver)."""
+        if not self.sprite:
+            return
+
+        screen_x = (self.x - camera_x) * zoom
+        screen_y = (self.y - camera_y) * zoom
+
+        # Lógica de desenho da arma (sincronizada com a animação do jogador)
+        if self.weapon_anim_data:
+            weapon_sprite_id = self.weapon_anim_data.get('texture_id')
+            weapon_anim_row = self.weapon_anim_data.get('anim_row')
+
+            if weapon_sprite_id is not None:
+                weapon_sprite = sprite_cache.get(weapon_sprite_id)
+                if weapon_sprite is None and weapon_sprite_id not in sprite_cache:
+                    weapon_sprite = load_sprite_from_db(weapon_sprite_id)
+                    sprite_cache[weapon_sprite_id] = weapon_sprite
+                
+                if weapon_sprite:
+                    # Sincroniza o frame da arma com o do jogador
+                    weapon_sprite.numFrame = self.sprite.numFrame
+                    
+                    self.sprite.draw(screen_x, screen_y, self.anim_row, zoom)
+                    weapon_sprite.draw(screen_x, screen_y, weapon_anim_row, zoom)
+                    return # Evita desenhar o jogador novamente
+
+        # Desenha apenas o jogador se não houver arma
+        self.sprite.draw(screen_x, screen_y, self.anim_row, zoom)
+
+
 # --- FUNÇÕES DE ADAPTAÇÃO DA STATSBAR ---
 def get_stat_values_from_server(stats_bar_instance):
     """Obtém os valores de status do game_state global para o cliente."""
@@ -309,6 +375,9 @@ class GameClient:
         # Cache para os sprites carregados
         self.sprite_cache = {}
 
+        # Dicionário para armazenar os objetos de jogadores da rede
+        self.network_players = {}
+
         # Carrega recursos do jogo (mapa, mouse, UI)
         self.map = Map('assets/data/map.json', 'assets/images/layers/basic.png')
         self.mouse = Mouse(32, 32, 12, 11)
@@ -482,10 +551,10 @@ class GameClient:
             self.map.render(camera_x, camera_y, self.zoom)
             
             # Renderiza todas as entidades recebidas do servidor
-            self.render_entities(game_state.get('players', {}), camera_x, camera_y)
-            self.render_entities(game_state.get('mobs', {}), camera_x, camera_y)
-            self.render_entities(game_state.get('projectiles', {}), camera_x, camera_y)
-            
+            self.render_players(game_state.get('players', {}), camera_x, camera_y)
+            self.render_other_entities(game_state.get('mobs', {}), camera_x, camera_y)
+            self.render_other_entities(game_state.get('projectiles', {}), camera_x, camera_y)
+
             # --- LÓGICA DE ATUALIZAÇÃO DA UI ---
             if player_data:
                 current_ui_state = player_data.get('ui_state', 'hud')
@@ -513,53 +582,44 @@ class GameClient:
         if sio.connected:
             sio.disconnect()
 
-    def render_entities(self, entities, camera_x, camera_y):
+    def render_players(self, players_data, camera_x, camera_y):
+        """Renderiza os jogadores, gerenciando seus ciclos de animação independentes."""
+        current_player_ids = set(players_data.keys())
+        existing_player_ids = set(self.network_players.keys())
+
+        # Remove jogadores que se desconectaram
+        for player_id in existing_player_ids - current_player_ids:
+            del self.network_players[player_id]
+
+        # Atualiza e desenha cada jogador
+        for entity_id, entity_data in players_data.items():
+            if entity_id not in self.network_players:
+                sprite_id = entity_data.get("texture_id")
+                if sprite_id:
+                    self.network_players[entity_id] = NetworkPlayer(sprite_id)
+            
+            player = self.network_players.get(entity_id)
+            if player:
+                player.update_state(entity_data)
+                player.draw(camera_x, camera_y, self.zoom, self.sprite_cache)
+
+    def render_other_entities(self, entities, camera_x, camera_y):
+        """Renderiza outras entidades como mobs e projéteis."""
         for entity_id, entity_data in entities.items():
             sprite_id = entity_data.get("texture_id")
-            anim_row = entity_data.get("anim_row", 0)  # Usa a linha de animação do servidor
             
             if sprite_id:
-                # --- LÓGICA DE CACHE DE SPRITE ---
                 sprite = self.sprite_cache.get(sprite_id)
                 if sprite is None and sprite_id not in self.sprite_cache:
-                    # Se não está no cache, carrega
                     sprite = load_sprite_from_db(sprite_id)
-                    self.sprite_cache[sprite_id] = sprite # Armazena (mesmo que seja None)
-                # -------------------------------------
+                    self.sprite_cache[sprite_id] = sprite
 
                 if sprite:
                     screen_x = (entity_data['x'] - camera_x) * self.zoom
                     screen_y = (entity_data['y'] - camera_y) * self.zoom
-
-                    # --- LÓGICA DA ANIMAÇÃO DA ARMA (COM SINCRONIZAÇÃO) ---
-                    weapon_anim_data = entity_data.get('weapon_anim')
-                    if weapon_anim_data:
-                        weapon_sprite_id = weapon_anim_data.get('texture_id')
-                        weapon_anim_row = weapon_anim_data.get('anim_row')
-
-                        if weapon_sprite_id is not None:
-                            weapon_sprite = self.sprite_cache.get(weapon_sprite_id)
-                            if weapon_sprite is None and weapon_sprite_id not in self.sprite_cache:
-                                weapon_sprite = load_sprite_from_db(weapon_sprite_id)
-                                self.sprite_cache[weapon_sprite_id] = weapon_sprite
-                            
-                            if weapon_sprite:
-                                # SINCRONIZA O FRAME DA ARMA COM O DO JOGADOR
-                                weapon_sprite.numFrame = sprite.numFrame
-                                
-                                # Desenha o jogador primeiro
-                                sprite.draw(screen_x, screen_y, anim_row, self.zoom)
-                                # Desenha a arma por cima
-                                weapon_sprite.draw(screen_x, screen_y, weapon_anim_row, self.zoom)
-                            else:
-                                # Se a arma não tiver sprite, desenha só o jogador
-                                sprite.draw(screen_x, screen_y, anim_row, self.zoom)
-                        else:
-                            # Se não houver dados da arma, desenha só o jogador
-                            sprite.draw(screen_x, screen_y, anim_row, self.zoom)
-                    else:
-                        # Se não estiver atacando, desenha só o jogador
-                        sprite.draw(screen_x, screen_y, anim_row, self.zoom)
+                    # Mobs e projéteis ainda podem usar a linha de animação do servidor
+                    anim_row = entity_data.get("anim_row", 0)
+                    sprite.draw(screen_x, screen_y, anim_row, self.zoom)
 
 # --- 4. PONTO DE ENTRADA ---
 if __name__ == '__main__':
