@@ -140,10 +140,14 @@ class Mouse(GUI):
             self.texture_pressed = load_sprite_from_db(texture_pressed)
         else:
             self.texture_pressed = None
+        # Controla a visibilidade do cursor customizado
+        self.visible = True
 
     def update(self, mousex, mousey, press):
         self.x = mousex
         self.y = mousey
+        if not self.visible:
+            return
         if press and self.texture_pressed:
             self.texture_pressed.draw(self.x, self.y, 0, 1)
         elif self.texture:
@@ -681,6 +685,29 @@ class XMLInterface:
         """Atualiza interações da interface"""
         for element in self.elements:
             self._update_element(element, mouse_x, mouse_y, mouse_pressed)
+    
+    def find_element_at(self, x: int, y: int):
+        """Retorna o elemento (o mais acima na ordem visual) que contém as coordenadas x,y.
+        Retorna None se nenhum elemento for encontrado.
+        """
+        def dfs(elements):
+            # Varre em ordem inversa para priorizar elementos desenhados por cima
+            for el in reversed(elements):
+                try:
+                    abs_x, abs_y = el.get_absolute_position()
+                    sx = getattr(el, 'sizex', getattr(el, 'size', 0))
+                    sy = getattr(el, 'sizey', getattr(el, 'size', 0))
+                    if abs_x <= x <= abs_x + sx and abs_y <= y <= abs_y + sy:
+                        # Checa filhos primeiro para encontrar o elemento mais específico
+                        if hasattr(el, 'children') and el.children:
+                            found = dfs(el.children)
+                            if found:
+                                return found
+                        return el
+                except Exception:
+                    pass
+            return None
+        return dfs(self.elements)
     
     def _update_element(self, element, mouse_x, mouse_y, mouse_pressed):
         """Atualiza um elemento e seus filhos recursivamente"""
@@ -1876,6 +1903,18 @@ class InterfaceManager:
         """Retorna a interface atualmente ativa"""
         if self.current_interface and self.current_interface in self.interfaces:
             return self.interfaces[self.current_interface]
+        return None
+
+    def get_element_at(self, x: int, y: int):
+        """Convenience: retorna o elemento da interface ativa que contém (x,y) ou None."""
+        active = self.get_active_interface()
+        if not active:
+            return None
+        if hasattr(active, 'find_element_at'):
+            try:
+                return active.find_element_at(x, y)
+            except Exception:
+                return None
         return None
     
     def set_active_interface(self, name):

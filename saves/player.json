@@ -1,19 +1,19 @@
 {
     "id": 1,
     "position": {
-        "x": 1418,
-        "y": 550
+        "x": 1237,
+        "y": 164
     },
     "stats": {
-        "hp": 6.0,
+        "hp": 18.0,
         "maxHp": 150,
         "regenHp": 0.5,
         "mana": 100,
         "maxMana": 100,
         "regenMana": 0.3,
-        "stamina": 80,
+        "stamina": 46.799999999999855,
         "maxStamina": 80,
-        "regenStamina": 0.4,
+        "regenStamina": 1,
         "damage": 0.5,
         "critical": 0.1,
         "defense": 8,
@@ -26,7 +26,7 @@
                 "size": 42
             }
         },
-        "quant": 2486,
+        "quant": 2644,
         "inv": [
             {
                 "item_type": "Consumable",
@@ -38,7 +38,7 @@
                 "mana": 100.0,
                 "stamina": 0.0,
                 "effect": "",
-                "quant": 100
+                "quant": 91
             },
             {
                 "item_type": "Consumable",
@@ -50,7 +50,7 @@
                 "mana": 0,
                 "stamina": 50.0,
                 "effect": "0",
-                "quant": 452
+                "quant": 405
             }
         ]
     },

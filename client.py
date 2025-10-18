@@ -371,6 +371,21 @@ class GameClient:
         self.clock = pygame.time.Clock()
         self.input = Input()
         self.zoom = 2
+        # Carrega configurações de input/aim do config se presentes
+        try:
+            input_cfg = self.CONFIG.get('input', {})
+            if 'aim_invert_x' in input_cfg:
+                self.input.aim_invert_x = bool(input_cfg.get('aim_invert_x'))
+            if 'aim_invert_y' in input_cfg:
+                self.input.aim_invert_y = bool(input_cfg.get('aim_invert_y'))
+            if 'aim_sensitivity' in input_cfg:
+                self.input.aim_sensitivity = float(input_cfg.get('aim_sensitivity'))
+            if 'aim_snap_count' in input_cfg:
+                self.input.aim_snap_count = int(input_cfg.get('aim_snap_count'))
+            if 'aim_snap_rotation' in input_cfg:
+                self.input.aim_snap_rotation = float(input_cfg.get('aim_snap_rotation'))
+        except Exception:
+            pass
         
         # Cache para os sprites carregados
         self.sprite_cache = {}
@@ -570,6 +585,11 @@ class GameClient:
             mx, my = self.input.get_mouse_pos()
             self.interface_manager.update(mx, my, self.input.get_mouse_button(0))
             self.interface_manager.draw()
+            # Controla visibilidade do cursor conforme input
+            if hasattr(self.input.mouse, '__getitem__'):
+                self.mouse.visible = bool(self.input.mouse.get("visible", True))
+            else:
+                self.mouse.visible = True
             self.mouse.update(mx, my, self.input.get_mouse_button(0))
             
             # Desenha FPS

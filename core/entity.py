@@ -83,6 +83,30 @@ class Entity:
     def run(self,map):
         if hasattr(self, "stats"):
             self.stats.update_effects()
+            # Regeneração passiva: hp, mana e stamina.
+            # As taxas em stats.regen* são consideradas por segundo; aqui usamos um passo fixo de 1/60 (assumindo 60 FPS).
+            try:
+                dt = 1.0 / 60.0
+                # HP: só regenera se estiver vivo (hp > 0) e abaixo do máximo
+                if getattr(self.stats, 'hp', 0) > 0 and getattr(self.stats, 'hp', 0) < getattr(self.stats, 'maxHp', 0):
+                    regen_hp = getattr(self.stats, 'regenHp', 0) or 0
+                    if regen_hp:
+                        self.stats.hp = min(self.stats.maxHp, self.stats.hp + regen_hp * dt)
+
+                # Mana: regenera quando abaixo do máximo
+                if getattr(self.stats, 'mana', 0) < getattr(self.stats, 'maxMana', 0):
+                    regen_mana = getattr(self.stats, 'regenMana', 0) or 0
+                    if regen_mana:
+                        self.stats.mana = min(self.stats.maxMana, self.stats.mana + regen_mana * dt)
+
+                # Stamina: regenera somente quando não estiver sprintando nem dashing
+                if getattr(self.stats, 'stamina', 0) < getattr(self.stats, 'maxStamina', 0):
+                    regen_stamina = getattr(self.stats, 'regenStamina', 0) or 0
+                    if regen_stamina and not getattr(self, 'sprinting', False) and not getattr(self, 'dashing', False):
+                        self.stats.stamina = min(self.stats.maxStamina, self.stats.stamina + regen_stamina * dt)
+            except Exception:
+                # Não deixe a regeneração interromper o loop por erro inesperado
+                pass
         # Atualiza efeito visual de dano
         if self.damage_effect_timer > 0:
             self.damage_effect_timer -= 1/60  # Assume 60 FPS

@@ -1,10 +1,17 @@
-screen:
-  width: 1280
-  height: 720
-
-project:
-  name: "projeto Integrador"
-  window_name: "projeto_integrador"
-  FPS: 60
 debug:
+  showCoords: true
   showHitboxes: false
+input:
+  aim_invert_x: false
+  aim_invert_y: false
+  aim_rotation_sensitivity: 1.0
+  aim_sensitivity: 1.0
+  aim_snap_count: 0
+  aim_snap_rotation: 0.0
+project:
+  FPS: 60
+  name: projeto Integrador
+  window_name: projeto_integrador
+screen:
+  height: 720
+  width: 1280

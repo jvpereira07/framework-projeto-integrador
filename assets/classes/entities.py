@@ -581,6 +581,10 @@ class Player(Entity):
             self.stats.stamina -= 0.1
         if self.stats.stamina <= 0:
             self.sprinting = False
+        
+        # Proibir sprint enquanto atacando
+        if self.attacking:
+            self.sprinting = False
         self.control_animation()
 
         # Aplica resets de frame nas transições de ataque (início e fim)
