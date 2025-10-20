@@ -17,8 +17,13 @@
               texture_empty="36" texture_full="37" stat="stamina"
               orientation="horizontal" direction="positive" />
     
-       
+        <!-- Armas equipadas -->
         
+    
+    </container>
+    <container x="90%" y="75%" sizex="200" sizey="64" texture="none" border="false">
+    <main_weapon x="0%" y="70%" texture="43" />
+    <secundary_weapon x="70%" y="10%" texture="44" />
     </container>
     
 </gui>

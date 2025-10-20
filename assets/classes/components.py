@@ -609,6 +609,143 @@ class StatsBar(GUI):
                 glColor4f(1.0, 1.0, 1.0, fill_percentage)
                 self.texture_full.draw(abs_x, abs_y, 0, 1)
 
+class MainWeaponDisplay(GUI):
+    """Componente para exibir a arma equipada na mão principal (hand1)"""
+    def __init__(self, x, y, texture=None, parent=None):
+        # Tamanho fixo: 64x64
+        super().__init__(texture, x, y, 64, 64, parent)
+        self.weapon_texture = None
+        print(f"MainWeaponDisplay criado em ({x}, {y}) com tamanho (64, 64)")
+
+    def get_weapon_item(self):
+        """Obtém o item equipado na mão ativa (hand1 ou hand2 dependendo de active_hand)"""
+        try:
+            from core.entity import PControl
+            player = PControl.get_main_player()
+
+            if not player or not hasattr(player, 'equip'):
+                return None
+
+            # Determina qual mão está ativa
+            active_hand = getattr(player, 'active_hand', 1)  # Padrão para hand1
+            
+            # Retorna o item equipado na mão ativa
+            if active_hand == 1:
+                return getattr(player.equip, 'hand1', None)
+            elif active_hand == 2:
+                return getattr(player.equip, 'hand2', None)
+            else:
+                return getattr(player.equip, 'hand1', None)  # Fallback
+
+        except Exception as e:
+            print(f"Erro ao obter item da mão ativa: {e}")
+            return None
+
+    def draw(self):
+        """Desenha a textura base e a textura da arma equipada"""
+        if not getattr(self, 'visible', True):
+            return
+
+        abs_x, abs_y = self.get_absolute_position()
+
+        # Desenha a textura base do slot primeiro
+        super().draw()
+
+        try:
+            weapon_item = self.get_weapon_item()
+
+            if weapon_item and hasattr(weapon_item, 'texture') and weapon_item.texture is not None:
+                # Carrega a textura se necessário
+                if isinstance(weapon_item.texture, int):
+                    self.weapon_texture = load_sprite_from_db(weapon_item.texture)
+                else:
+                    self.weapon_texture = weapon_item.texture
+
+                # Desenha a textura da arma por cima, centralizada
+                if self.weapon_texture:
+                    # Centraliza o sprite da arma dentro do componente (64x64)
+                    center_offset_x = 0  # Ajuste para mover mais para esquerda
+                    center_offset_y = 10  # Mantém abaixado
+                    weapon_x = abs_x + center_offset_x
+                    weapon_y = abs_y + center_offset_y
+                    self.weapon_texture.draw(weapon_x, weapon_y, 0, 1.5)  # Escala ainda menor
+                else:
+                    print(f"Aviso: Textura da arma principal não encontrada")
+            else:
+                # Não desenha nada extra se não houver arma equipada
+                pass
+
+        except Exception as e:
+            print(f"Erro ao desenhar MainWeaponDisplay: {e}")
+
+class SecondaryWeaponDisplay(GUI):
+    """Componente para exibir a arma equipada na mão secundária (hand2)"""
+    def __init__(self, x, y, texture=None, parent=None):
+        # Tamanho fixo: 48x48
+        super().__init__(texture, x, y, 48, 48, parent)
+        self.weapon_texture = None
+        print(f"SecondaryWeaponDisplay criado em ({x}, {y}) com tamanho (48, 48)")
+
+    def get_weapon_item(self):
+        """Obtém o item equipado na mão inativa (oposta à mão ativa)"""
+        try:
+            from core.entity import PControl
+            player = PControl.get_main_player()
+
+            if not player or not hasattr(player, 'equip'):
+                return None
+
+            # Determina qual mão está ativa
+            active_hand = getattr(player, 'active_hand', 1)  # Padrão para hand1
+            
+            # Retorna o item equipado na mão inativa (oposta à ativa)
+            if active_hand == 1:
+                return getattr(player.equip, 'hand2', None)  # Mão inativa é hand2
+            elif active_hand == 2:
+                return getattr(player.equip, 'hand1', None)  # Mão inativa é hand1
+            else:
+                return getattr(player.equip, 'hand2', None)  # Fallback
+
+        except Exception as e:
+            print(f"Erro ao obter item da mão inativa: {e}")
+            return None
+
+    def draw(self):
+        """Desenha a textura base e a textura da arma equipada"""
+        if not getattr(self, 'visible', True):
+            return
+
+        abs_x, abs_y = self.get_absolute_position()
+
+        # Desenha a textura base do slot primeiro
+        super().draw()
+
+        try:
+            weapon_item = self.get_weapon_item()
+
+            if weapon_item and hasattr(weapon_item, 'texture') and weapon_item.texture is not None:
+                # Carrega a textura se necessário
+                if isinstance(weapon_item.texture, int):
+                    self.weapon_texture = load_sprite_from_db(weapon_item.texture)
+                else:
+                    self.weapon_texture = weapon_item.texture
+
+                # Desenha a textura da arma por cima, centralizada
+                if self.weapon_texture:
+                    # Centraliza o sprite da arma dentro do componente (48x48)
+                    center_offset = 0  # Mantém posição original
+                    weapon_x = abs_x + center_offset
+                    weapon_y = abs_y + center_offset
+                    self.weapon_texture.draw(weapon_x, weapon_y, 0, 1)
+                else:
+                    print(f"Aviso: Textura da arma secundária não encontrada")
+            else:
+                # Não desenha nada extra se não houver arma equipada
+                pass
+
+        except Exception as e:
+            print(f"Erro ao desenhar SecondaryWeaponDisplay: {e}")
+
 # Registro de classes
 CLASS_MAP = {
     "gui": GUI,
@@ -619,7 +756,9 @@ CLASS_MAP = {
     "infobox": InfoBox,
     "slot": Slot,
     "equipslot": EquipmentSlot,
-    "statsbar": StatsBar
+    "statsbar": StatsBar,
+    "main_weapon": MainWeaponDisplay,
+    "secundary_weapon": SecondaryWeaponDisplay
 }
 
 
@@ -1174,6 +1313,24 @@ def instantiate_element(cls, args, parent, screen_width=800, screen_height=600):
             direction = (args.get('direction') or args.get('dir') or 'positive')
             
             return cls(x, y, sizex, sizey, texture_empty, texture_full, stat_name, parent, orientation, direction)
+        
+        elif cls == MainWeaponDisplay:
+            # Coordenadas com suporte a valores relativos
+            x = parse_coordinate(args.get('x', 0), screen_width, 64)
+            y = parse_coordinate(args.get('y', 0), screen_height, 64)
+            
+            texture = parse_texture(args.get('texture', 'none'))
+            
+            return cls(x, y, texture, parent)
+        
+        elif cls == SecondaryWeaponDisplay:
+            # Coordenadas com suporte a valores relativos
+            x = parse_coordinate(args.get('x', 0), screen_width, 48)
+            y = parse_coordinate(args.get('y', 0), screen_height, 48)
+            
+            texture = parse_texture(args.get('texture', 'none'))
+            
+            return cls(x, y, texture, parent)
         
     except Exception as e:
         print(f"Erro ao instanciar elemento {cls.__name__}: {e}")
