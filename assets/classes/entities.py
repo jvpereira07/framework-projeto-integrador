@@ -131,6 +131,9 @@ class Mob(Entity):
     def run(self, map):
         super().run(map)
         self.check_projectile()
+        # Atualiza timer de efeito de fumaça
+        if hasattr(self, 'smoke_timer') and self.smoke_timer > 0:
+            self.smoke_timer -= 1/60
        
 class Projectile(Entity):
     def __init__(self, id, x, y, idProjectile, dirx, diry, type_owner=None, id_owner=None):
@@ -225,6 +228,8 @@ class Player(Entity):
         self.moving = False
         self.dashing = False
         self.sprinting = False
+        import time
+        self.last_safe_update = time.time()
 
 
     def loadInv(self, invData):
@@ -555,6 +560,13 @@ class Player(Entity):
         if trap_detected and not self.dashing:
             self.take_damage(10/60)  # 10 de dano por segundo (assume 60 FPS)
         
+        # Atualiza posição segura a cada 5 segundos, se não estiver em abismo
+        import time
+        if not abyss_detected and time.time() - self.last_safe_update >= 5.0:
+            self.prev_posx = self.posx
+            self.prev_posy = self.posy
+            self.last_safe_update = time.time()
+        
         # Atualiza efeito visual de dano (herdado da classe Entity)
         if hasattr(self, 'damage_effect_timer') and self.damage_effect_timer > 0:
             self.damage_effect_timer -= 1/60  # Assume 60 FPS
@@ -586,6 +598,31 @@ class Player(Entity):
         if self.attacking:
             self.sprinting = False
         self.control_animation()
+
+        # --- Regeneração (apenas para players) ---
+        # Usa base de 60 ticks por segundo como convensão do projeto
+        try:
+            # Apenas aplicar se este objeto for um Player
+            if getattr(self, 'type', None) == 'player' and hasattr(self, 'stats'):
+                tick_dt = 1.0 / 60.0
+                # Regeneração de HP
+                if getattr(self.stats, 'regenHp', 0):
+                    self.stats.hp += self.stats.regenHp * tick_dt
+                    if self.stats.hp > self.stats.maxHp:
+                        self.stats.hp = self.stats.maxHp
+                # Regeneração de Mana
+                if getattr(self.stats, 'regenMana', 0):
+                    self.stats.mana += self.stats.regenMana * tick_dt
+                    if self.stats.mana > self.stats.maxMana:
+                        self.stats.mana = self.stats.maxMana
+                # Regeneração de Stamina
+                if getattr(self.stats, 'regenStamina', 0):
+                    self.stats.stamina += self.stats.regenStamina * tick_dt
+                    if self.stats.stamina > self.stats.maxStamina:
+                        self.stats.stamina = self.stats.maxStamina
+        except Exception:
+            # Protege contra atributos ausentes ou erros inesperados
+            pass
 
         # Aplica resets de frame nas transições de ataque (início e fim)
         try:

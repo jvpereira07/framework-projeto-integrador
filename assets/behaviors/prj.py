@@ -10,14 +10,14 @@ def fun1(entity, map, dirx, diry, EControl):
         entity.time -= 1
 
         # Verifica colisão com entidades (exceto ele mesmo e os já atingidos)
-        from core.entity import PrjControl
-        for other in PrjControl.Projectiles:
+        from core.entity import EControl
+        for other in EControl.Entities:
             if other.id == entity.id or other.id in entity.already_hit:
                 continue  # ignora ele mesmo e quem já foi atingido
 
             if abs(entity.posx - other.posx) < entity.sizex and abs(entity.posy - other.posy) < entity.sizey:
                 if other.type == "mob":
-                    other.stats.hp -= entity.damage
+                    other.take_damage(entity.damage)
                     entity.penetration -= 1
                     entity.already_hit.append(other.id)
 
@@ -99,7 +99,7 @@ def wave_motion(entity, map, dirx, diry, EControl):
                 entity.posy + entity.sizey > other.posy):
                 
                 if other.type == "mob" and hasattr(other, 'stats'):
-                    other.stats.hp -= entity.damage
+                    other.take_damage(entity.damage)
                     entity.penetration -= 1
                     entity.already_hit.append(other.id)
 
@@ -172,7 +172,7 @@ def spiral_motion(entity, map, dirx, diry, EControl):
                 entity.posy + entity.sizey > other.posy):
                 
                 if other.type == "mob" and hasattr(other, 'stats'):
-                    other.stats.hp -= entity.damage
+                    other.take_damage(entity.damage)
                     entity.penetration -= 1
                     entity.already_hit.append(other.id)
 

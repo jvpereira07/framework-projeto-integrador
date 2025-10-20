@@ -84,7 +84,9 @@ class Game:
         self.map = Map('assets/data/map.json','assets/images/layers/basic.png')
         # Instancia o player no novo PlayerController
         PlayerTick.add(Player(1,"saves/player.json",load_sprite_from_db(8)))
-        
+        ##from assets.classes.itens import get_item_from_db
+        ##pocao_vida = get_item_from_db(1)
+        ##PlayerTick.Players[0].inv.get(pocao_vida,5)
         # Carregar events do banco
         EventTick.load()
         

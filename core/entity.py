@@ -210,6 +210,22 @@ class EControl:
                 color_filter = (1.0, 0.3, 0.3, 1.0)  # Vermelho forte
             
             entidades.texture.draw(screen_x, screen_y, entidades.anim, zoom, color_filter)
+            # Desenha efeito de fumaça se ativo
+            if hasattr(entidades, 'smoke_timer') and entidades.smoke_timer > 0:
+                from core.resources import draw_rect
+                alpha = entidades.smoke_timer / 1.5
+                color = (128, 128, 128, int(alpha * 255))  # Cinza com alpha
+                # Posição da fumaça (local de spawn)
+                smoke_screen_x = (entidades.smoke_x - camera_x) * zoom
+                smoke_screen_y = (entidades.smoke_y - camera_y) * zoom
+                # Tempo decorrido para movimento
+                elapsed = 1.5 - entidades.smoke_timer
+                rise_speed = 30  # pixels por segundo
+                rise = elapsed * rise_speed
+                # Desenha pequenos quadrados fragmentados subindo
+                offsets = [(-10, -10), (10, 10), (0, -15), (-15, 0), (15, 15), (-5, 5), (5, -5)]
+                for ox, oy in offsets:
+                    draw_rect(int(smoke_screen_x + ox * zoom - 4), int(smoke_screen_y + oy * zoom - 4 - rise), 8, 8, color)
             # Desenha a hitbox do mob com transparência parcial (se habilitado)
             if SHOW_HITBOXES:
                 try:

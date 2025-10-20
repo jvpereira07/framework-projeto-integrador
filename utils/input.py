@@ -103,6 +103,7 @@ class Input:
         self._back_prev = False
         self._y_prev = False
         self._a_prev = False
+        self._dpad_up_prev = False
         self._a_last_accepted = 0.0
         self.a_debounce = 0.15
         self._simulated_clicks = set()
@@ -642,6 +643,13 @@ def control(input,player,map):
         player.active_hand = 1
     if input.get_key_pressed("key_2"):
         player.active_hand = 2
+    
+    # D-pad up toggle active hand
+    hat = input.joystick.get_hat(0) if input.joystick else (0, 0)
+    dpad_up = hat[1] == 1
+    if dpad_up and not getattr(input, '_dpad_up_prev', False):
+        player.active_hand = 2 if player.active_hand == 1 else 1
+    input._dpad_up_prev = dpad_up
     
     # Sistema de combate com direcionamento do player
     if input.get_mouse_button(0) and not player.dashing:

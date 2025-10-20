@@ -5,3 +5,4 @@ python-socketio>=5.10.0
 requests>=2.31.0
 numpy>=1.26.1  # Necessário para algumas operações matemáticas
 builtins>=0.0.3  # Necessário para variáveis globais
+Pillow>=9.0.0

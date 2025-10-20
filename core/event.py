@@ -71,7 +71,12 @@ class Event:
                 offset_y = (i // 3) * 32
                 spawn_x = x + offset_x
                 spawn_y = y + offset_y
-                EControl.add(Mob(0, spawn_x, spawn_y, id_mob))
+                mob = Mob(0, spawn_x, spawn_y, id_mob)
+                EControl.add(mob)
+                # Adiciona efeito de fumaça rápida
+                mob.smoke_timer = 1.5
+                mob.smoke_x = spawn_x
+                mob.smoke_y = spawn_y
 
         elif self.actionType == "chat":
             print(self.action['message'])
